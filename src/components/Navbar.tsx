@@ -1,0 +1,54 @@
+import { Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+const Navbar = () => {
+  return (
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/30">
+      <div className="container-narrow">
+        <nav className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <a href="/" className="flex items-center gap-2 group">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center group-hover:shadow-lg group-hover:shadow-primary/30 transition-shadow duration-300">
+              <Clock className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <span className="text-lg font-serif font-medium">Time Capsule</span>
+          </a>
+
+          {/* Navigation Links */}
+          <div className="hidden md:flex items-center gap-8">
+            <a
+              href="#how-it-works"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+            >
+              How It Works
+            </a>
+            <a
+              href="#features"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+            >
+              Features
+            </a>
+            <a
+              href="#pricing"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
+            >
+              Pricing
+            </a>
+          </div>
+
+          {/* Auth Buttons */}
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm">
+              Sign In
+            </Button>
+            <Button variant="hero" size="sm">
+              Get Started
+            </Button>
+          </div>
+        </nav>
+      </div>
+    </header>
+  );
+};
+
+export default Navbar;
