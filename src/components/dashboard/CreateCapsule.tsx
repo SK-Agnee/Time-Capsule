@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { Upload, Image, Video, Mic, MessageSquare, Calendar, Lock, Sparkles } from "lucide-react";
+import { format } from "date-fns";
+import { Upload, Image, Video, Mic, MessageSquare, Calendar, Lock, Sparkles, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 const contentTypes = [
   { id: "photos", icon: Image, label: "Photos", description: "Upload photos & images" },
@@ -17,8 +21,8 @@ const CreateCapsule = () => {
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [unlockDate, setUnlockDate] = useState("");
-
+  const [unlockDate, setUnlockDate] = useState<Date | undefined>();
+  const [unlockTime, setUnlockTime] = useState("12:00");
   const toggleType = (typeId: string) => {
     setSelectedTypes((prev) =>
       prev.includes(typeId) ? prev.filter((id) => id !== typeId) : [...prev, typeId]
@@ -93,20 +97,50 @@ const CreateCapsule = () => {
             />
           </div>
 
-          {/* Unlock Date */}
+          {/* Unlock Date & Time */}
           <div className="space-y-2">
-            <Label htmlFor="unlock-date" className="text-sm text-muted-foreground flex items-center gap-2">
+            <Label className="text-sm text-muted-foreground flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              Set Release Date
+              Set Release Date & Time
             </Label>
-            <Input
-              id="unlock-date"
-              type="date"
-              value={unlockDate}
-              onChange={(e) => setUnlockDate(e.target.value)}
-              min={new Date().toISOString().split("T")[0]}
-              className="bg-muted/30 border-border/50 focus:border-primary"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal bg-muted/30 border-border/50 hover:border-primary",
+                      !unlockDate && "text-muted-foreground"
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {unlockDate ? format(unlockDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={unlockDate}
+                    onSelect={setUnlockDate}
+                    disabled={(date) => date < new Date()}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="time"
+                  value={unlockTime}
+                  onChange={(e) => setUnlockTime(e.target.value)}
+                  className="pl-10 bg-muted/30 border-border/50 focus:border-primary"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Your capsule will unlock on {unlockDate ? format(unlockDate, "MMMM d, yyyy") : "the selected date"} at {unlockTime}
+            </p>
           </div>
 
           {/* Create Button */}
