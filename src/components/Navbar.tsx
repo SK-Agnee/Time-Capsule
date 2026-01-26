@@ -1,7 +1,23 @@
+import { useState } from "react";
 import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SignInDialog from "@/components/auth/SignInDialog";
+import SignUpDialog from "@/components/auth/SignUpDialog";
 
 const Navbar = () => {
+  const [showSignIn, setShowSignIn] = useState(false);
+  const [showSignUp, setShowSignUp] = useState(false);
+
+  const handleSwitchToSignUp = () => {
+    setShowSignIn(false);
+    setShowSignUp(true);
+  };
+
+  const handleSwitchToSignIn = () => {
+    setShowSignUp(false);
+    setShowSignIn(true);
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/30">
       <div className="container-narrow">
@@ -38,15 +54,27 @@ const Navbar = () => {
 
           {/* Auth Buttons */}
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={() => setShowSignIn(true)}>
               Sign In
             </Button>
-            <Button variant="hero" size="sm">
+            <Button variant="hero" size="sm" onClick={() => setShowSignUp(true)}>
               Get Started
             </Button>
           </div>
         </nav>
       </div>
+
+      {/* Auth Dialogs */}
+      <SignInDialog
+        open={showSignIn}
+        onOpenChange={setShowSignIn}
+        onSwitchToSignUp={handleSwitchToSignUp}
+      />
+      <SignUpDialog
+        open={showSignUp}
+        onOpenChange={setShowSignUp}
+        onSwitchToSignIn={handleSwitchToSignIn}
+      />
     </header>
   );
 };
