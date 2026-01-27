@@ -2,23 +2,14 @@ import { Clock, Lock, Unlock, Diamond } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 
-interface Capsule {
-  id: string;
-  title: string;
-  createdYear: number;
-  unlockYear: number;
-  status: "locked" | "unlocking" | "opened";
-  icon?: string;
-}
-
-const capsules: Capsule[] = [
+const capsules = [
   { id: "1", title: "Wedding Memories", createdYear: 2024, unlockYear: 2040, status: "locked" },
   { id: "2", title: "First Business Year", createdYear: 2023, unlockYear: 2030, status: "locked" },
   { id: "3", title: "College Graduation", createdYear: 2022, unlockYear: 2025, status: "unlocking" },
   { id: "4", title: "Letters to Self", createdYear: 2020, unlockYear: 2024, status: "opened" },
 ];
 
-const getStatusStyles = (status: Capsule["status"]) => {
+const getStatusStyles = (status) => {
   switch (status) {
     case "locked":
       return "bg-capsule-locked border-border/30";
@@ -31,7 +22,7 @@ const getStatusStyles = (status: Capsule["status"]) => {
   }
 };
 
-const getStatusIcon = (status: Capsule["status"]) => {
+const getStatusIcon = (status) => {
   switch (status) {
     case "locked":
       return <Lock className="w-4 h-4 text-muted-foreground" />;

@@ -2,17 +2,7 @@ import { Globe, Clock, MapPin, Heart, Share2, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-interface PublicCapsule {
-  id: string;
-  title: string;
-  author: string;
-  location: string;
-  unlockDate: string;
-  likes: number;
-  preview: string;
-}
-
-const publicCapsules: PublicCapsule[] = [
+const publicCapsules = [
   {
     id: "1",
     title: "Message to 2030",
