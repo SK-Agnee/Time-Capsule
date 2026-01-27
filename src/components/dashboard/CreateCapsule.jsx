@@ -18,12 +18,13 @@ const contentTypes = [
 ];
 
 const CreateCapsule = () => {
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState([]);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [unlockDate, setUnlockDate] = useState<Date | undefined>();
+  const [unlockDate, setUnlockDate] = useState();
   const [unlockTime, setUnlockTime] = useState("12:00");
-  const toggleType = (typeId: string) => {
+  
+  const toggleType = (typeId) => {
     setSelectedTypes((prev) =>
       prev.includes(typeId) ? prev.filter((id) => id !== typeId) : [...prev, typeId]
     );

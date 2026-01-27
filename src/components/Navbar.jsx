@@ -3,6 +3,7 @@ import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SignInDialog from "@/components/auth/SignInDialog";
 import SignUpDialog from "@/components/auth/SignUpDialog";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const Navbar = () => {
   const [showSignIn, setShowSignIn] = useState(false);
@@ -52,8 +53,9 @@ const Navbar = () => {
             </a>
           </div>
 
-          {/* Auth Buttons */}
+          {/* Auth Buttons & Theme Toggle */}
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Button variant="ghost" size="sm" onClick={() => setShowSignIn(true)}>
               Sign In
             </Button>

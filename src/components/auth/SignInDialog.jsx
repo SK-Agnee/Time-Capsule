@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, Lock, Eye, EyeOff, User } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,61 +11,36 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Checkbox } from "@/components/ui/checkbox";
 
-interface SignUpDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSwitchToSignIn: () => void;
-}
-
-const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProps) => {
+const SignInDialog = ({ open, onOpenChange, onSwitchToSignUp }) => {
   const [showPassword, setShowPassword] = useState(false);
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    // TODO: Implement actual sign up logic
-    console.log("Sign up with:", name, email, password);
+    // TODO: Implement actual sign in logic
+    console.log("Sign in with:", email, password);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-background border-border/50">
         <DialogHeader className="text-center">
-          <DialogTitle className="text-2xl font-serif">Create Account</DialogTitle>
+          <DialogTitle className="text-2xl font-serif">Welcome Back</DialogTitle>
           <DialogDescription>
-            Start preserving your memories today
+            Sign in to access your time capsules
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          {/* Name */}
-          <div className="space-y-2">
-            <Label htmlFor="signup-name">Full Name</Label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="signup-name"
-                type="text"
-                placeholder="John Doe"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="pl-10 bg-muted/30 border-border/50 focus:border-primary"
-              />
-            </div>
-          </div>
-
           {/* Email */}
           <div className="space-y-2">
-            <Label htmlFor="signup-email">Email</Label>
+            <Label htmlFor="signin-email">Email</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                id="signup-email"
+                id="signin-email"
                 type="email"
                 placeholder="you@example.com"
                 value={email}
@@ -77,11 +52,19 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
 
           {/* Password */}
           <div className="space-y-2">
-            <Label htmlFor="signup-password">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="signin-password">Password</Label>
+              <button
+                type="button"
+                className="text-xs text-primary hover:underline"
+              >
+                Forgot password?
+              </button>
+            </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                id="signup-password"
+                id="signin-password"
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 value={password}
@@ -96,34 +79,11 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Must be at least 8 characters
-            </p>
-          </div>
-
-          {/* Terms Agreement */}
-          <div className="flex items-start space-x-2">
-            <Checkbox
-              id="terms"
-              checked={agreedToTerms}
-              onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
-              className="mt-0.5"
-            />
-            <Label htmlFor="terms" className="text-sm text-muted-foreground font-normal leading-tight">
-              I agree to the{" "}
-              <a href="#" className="text-primary hover:underline">
-                Terms of Service
-              </a>{" "}
-              and{" "}
-              <a href="#" className="text-primary hover:underline">
-                Privacy Policy
-              </a>
-            </Label>
           </div>
 
           {/* Submit */}
           <Button type="submit" variant="hero" className="w-full">
-            Create Account
+            Sign In
           </Button>
         </form>
 
@@ -165,15 +125,15 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
           </Button>
         </div>
 
-        {/* Switch to Sign In */}
+        {/* Switch to Sign Up */}
         <p className="text-center text-sm text-muted-foreground mt-4">
-          Already have an account?{" "}
+          Don't have an account?{" "}
           <button
             type="button"
-            onClick={onSwitchToSignIn}
+            onClick={onSwitchToSignUp}
             className="text-primary hover:underline font-medium"
           >
-            Sign in
+            Sign up
           </button>
         </p>
       </DialogContent>
@@ -181,4 +141,4 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
   );
 };
 
-export default SignUpDialog;
+export default SignInDialog;
