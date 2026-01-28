@@ -1,6 +1,15 @@
 import { Lock, Clock, Sparkles, Image, MessageCircle, Heart } from "lucide-react";
 
-const CapsuleCard = ({ type, title, date, countdown, preview, imageUrl }) => {
+interface CapsuleCardProps {
+  type: "locked" | "unlocking" | "opened";
+  title: string;
+  date: string;
+  countdown?: string;
+  preview?: string;
+  imageUrl?: string;
+}
+
+const CapsuleCard = ({ type, title, date, countdown, preview, imageUrl }: CapsuleCardProps) => {
   const typeStyles = {
     locked: "capsule-locked border-border/30",
     unlocking: "capsule-unlocking border-primary/40 animate-pulse-glow",
@@ -81,7 +90,7 @@ const CapsuleCard = ({ type, title, date, countdown, preview, imageUrl }) => {
   );
 };
 
-const capsules = [
+const capsules: CapsuleCardProps[] = [
   {
     type: "locked",
     title: "Letter to Future Me",
