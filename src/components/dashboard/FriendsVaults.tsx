@@ -3,7 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
-const friendVaults = [
+interface FriendVault {
+  id: string;
+  friendName: string;
+  friendAvatar?: string;
+  capsuleTitle: string;
+  unlockDate: string;
+  type: "shared" | "gift" | "collaborative";
+}
+
+const friendVaults: FriendVault[] = [
   {
     id: "1",
     friendName: "Sarah M.",
@@ -27,7 +36,7 @@ const friendVaults = [
   },
 ];
 
-const getTypeIcon = (type) => {
+const getTypeIcon = (type: FriendVault["type"]) => {
   switch (type) {
     case "shared":
       return <Heart className="w-4 h-4 text-secondary" />;
@@ -40,7 +49,7 @@ const getTypeIcon = (type) => {
   }
 };
 
-const getTypeBadge = (type) => {
+const getTypeBadge = (type: FriendVault["type"]) => {
   switch (type) {
     case "shared":
       return "Shared Capsule";

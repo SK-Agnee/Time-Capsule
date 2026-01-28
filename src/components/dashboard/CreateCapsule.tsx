@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { Upload, Image, Video, Mic, MessageSquare, Calendar, Lock, Sparkles, Clock } from "lucide-react";
+import { Upload, Image, Video, Mic, MessageSquare, Calendar, Lock, Sparkles, Clock, LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
-const contentTypes = [
+interface ContentType {
+  id: string;
+  icon: LucideIcon;
+  label: string;
+  description: string;
+}
+
+const contentTypes: ContentType[] = [
   { id: "photos", icon: Image, label: "Photos", description: "Upload photos & images" },
   { id: "videos", icon: Video, label: "Videos", description: "Record or upload videos" },
   { id: "audio", icon: Mic, label: "Audio", description: "Record voice messages" },
@@ -18,13 +25,13 @@ const contentTypes = [
 ];
 
 const CreateCapsule = () => {
-  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [unlockDate, setUnlockDate] = useState();
+  const [unlockDate, setUnlockDate] = useState<Date | undefined>();
   const [unlockTime, setUnlockTime] = useState("12:00");
   
-  const toggleType = (typeId) => {
+  const toggleType = (typeId: string) => {
     setSelectedTypes((prev) =>
       prev.includes(typeId) ? prev.filter((id) => id !== typeId) : [...prev, typeId]
     );

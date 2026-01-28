@@ -13,14 +13,20 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }) => {
+interface SignUpDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSwitchToSignIn: () => void;
+}
+
+const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // TODO: Implement actual sign up logic
     console.log("Sign up with:", name, email, password);
@@ -100,7 +106,7 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }) => {
             <Checkbox
               id="terms"
               checked={agreedToTerms}
-              onCheckedChange={(checked) => setAgreedToTerms(checked)}
+              onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
               className="mt-0.5"
             />
             <Label htmlFor="terms" className="text-sm text-muted-foreground font-normal leading-tight">
