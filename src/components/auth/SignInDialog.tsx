@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import {
   Dialog,
@@ -11,16 +12,44 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "@/hooks/use-toast";
 
-const SignInDialog = ({ open, onOpenChange, onSwitchToSignUp }) => {
+interface SignInDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSwitchToSignUp: () => void;
+}
+
+const SignInDialog = ({ open, onOpenChange, onSwitchToSignUp }: SignInDialogProps) => {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement actual sign in logic
-    console.log("Sign in with:", email, password);
+    
+    // Check locally stored users
+    const storedUsers = JSON.parse(localStorage.getItem("capsule_users") || "[]");
+    const user = storedUsers.find(
+      (u: { email: string; password: string }) => u.email === email && u.password === password
+    );
+    
+    if (user) {
+      localStorage.setItem("capsule_current_user", JSON.stringify(user));
+      onOpenChange(false);
+      navigate("/dashboard");
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully signed in.",
+      });
+    } else {
+      toast({
+        title: "Invalid credentials",
+        description: "Email or password is incorrect.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
