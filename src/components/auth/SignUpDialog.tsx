@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "@/hooks/use-toast";
 
 interface SignUpDialogProps {
   open: boolean;
@@ -30,9 +31,31 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Hardcoded signup - redirect to dashboard
+    
+    // Store user in localStorage
+    const storedUsers = JSON.parse(localStorage.getItem("capsule_users") || "[]");
+    const existingUser = storedUsers.find((u: { email: string }) => u.email === email);
+    
+    if (existingUser) {
+      toast({
+        title: "Email already registered",
+        description: "Please sign in or use a different email.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const newUser = { name, email, password };
+    storedUsers.push(newUser);
+    localStorage.setItem("capsule_users", JSON.stringify(storedUsers));
+    localStorage.setItem("capsule_current_user", JSON.stringify(newUser));
+    
     onOpenChange(false);
     navigate("/dashboard");
+    toast({
+      title: "Account created!",
+      description: "Welcome to Time Capsule.",
+    });
   };
 
   return (
