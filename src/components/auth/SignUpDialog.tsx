@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, User } from "lucide-react";
 import {
   Dialog,
@@ -20,6 +21,7 @@ interface SignUpDialogProps {
 }
 
 const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProps) => {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -28,8 +30,9 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement actual sign up logic
-    console.log("Sign up with:", name, email, password);
+    // Hardcoded signup - redirect to dashboard
+    onOpenChange(false);
+    navigate("/dashboard");
   };
 
   return (
