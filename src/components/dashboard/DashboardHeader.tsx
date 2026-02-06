@@ -13,26 +13,14 @@ import {
 import ThemeToggle from "@/components/ThemeToggle";
 import { toast } from "@/hooks/use-toast";
 
-interface User {
+interface UserData {
   name: string;
   email: string;
 }
 
-interface DashboardHeaderProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-}
-
-const dashboardTabs = [
-  { value: "my-capsules", label: "My Capsules" },
-  { value: "create-new", label: "Create New" },
-  { value: "friends-vaults", label: "Friends' Vaults" },
-  { value: "discovery", label: "Discovery" },
-];
-
-const DashboardHeader = ({ activeTab, onTabChange }: DashboardHeaderProps) => {
+const DashboardHeader = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserData | null>(null);
 
   useEffect(() => {
     const currentUser = localStorage.getItem("capsule_current_user");
@@ -59,8 +47,6 @@ const DashboardHeader = ({ activeTab, onTabChange }: DashboardHeaderProps) => {
       .slice(0, 2);
   };
 
-  const activeTabLabel = dashboardTabs.find((t) => t.value === activeTab)?.label || "Dashboard";
-
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/30">
       <div className="container-narrow">
@@ -72,27 +58,6 @@ const DashboardHeader = ({ activeTab, onTabChange }: DashboardHeaderProps) => {
             </div>
             <span className="text-lg font-serif font-medium">Time Capsule</span>
           </Link>
-
-          {/* Dashboard Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2 text-sm font-medium">
-                {activeTabLabel}
-                <ChevronDown className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-48 bg-popover">
-              {dashboardTabs.map((tab) => (
-                <DropdownMenuItem
-                  key={tab.value}
-                  onClick={() => onTabChange(tab.value)}
-                  className={activeTab === tab.value ? "bg-accent text-accent-foreground" : ""}
-                >
-                  {tab.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
