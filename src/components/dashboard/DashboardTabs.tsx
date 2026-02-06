@@ -4,9 +4,14 @@ import CreateCapsule from "./CreateCapsule";
 import FriendsVaults from "./FriendsVaults";
 import Discovery from "./Discovery";
 
-const DashboardTabs = () => {
+interface DashboardTabsProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+}
+
+const DashboardTabs = ({ activeTab, onTabChange }: DashboardTabsProps) => {
   return (
-    <Tabs defaultValue="my-capsules" className="w-full">
+    <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
       <TabsList className="bg-card border border-border/50 h-12 p-1 gap-1">
         <TabsTrigger 
           value="my-capsules"

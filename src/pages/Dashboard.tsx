@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 
 const Dashboard = () => {
   const [userName, setUserName] = useState("User");
+  const [activeTab, setActiveTab] = useState("my-capsules");
 
   useEffect(() => {
     const currentUser = localStorage.getItem("capsule_current_user");
@@ -16,7 +17,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <DashboardHeader />
+      <DashboardHeader activeTab={activeTab} onTabChange={setActiveTab} />
       
       <main className="container-narrow py-8">
         {/* Welcome Section */}
@@ -31,7 +32,7 @@ const Dashboard = () => {
         </div>
 
         {/* Dashboard Content */}
-        <DashboardTabs />
+        <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} />
       </main>
 
       <Footer />
