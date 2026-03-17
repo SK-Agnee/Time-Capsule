@@ -6,6 +6,13 @@ import SignInDialog from "@/components/auth/SignInDialog";
 import SignUpDialog from "@/components/auth/SignUpDialog";
 
 const Hero = () => {
+  const [showSignIn, setShowSignIn] = useState(false);
+  const [showSignUp, setShowSignUp] = useState(false);
+
+  const handleScrollToHowItWorks = () => {
+    document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image with Overlay */}
