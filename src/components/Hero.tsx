@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Clock, Timer, Hourglass } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
 import { Button } from "@/components/ui/button";
+import SignInDialog from "@/components/auth/SignInDialog";
+import SignUpDialog from "@/components/auth/SignUpDialog";
 
 const Hero = () => {
   return (
