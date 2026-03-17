@@ -79,6 +79,9 @@ const Hero = () => {
 
       {/* Bottom Gradient Fade */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
+
+      <SignInDialog open={showSignIn} onOpenChange={setShowSignIn} onSwitchToSignUp={() => { setShowSignIn(false); setShowSignUp(true); }} />
+      <SignUpDialog open={showSignUp} onOpenChange={setShowSignUp} onSwitchToSignIn={() => { setShowSignUp(false); setShowSignIn(true); }} />
     </section>
   );
 };

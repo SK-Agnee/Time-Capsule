@@ -50,6 +50,9 @@ const CallToAction = () => {
           </p>
         </div>
       </div>
+
+      <SignInDialog open={showSignIn} onOpenChange={setShowSignIn} onSwitchToSignUp={() => { setShowSignIn(false); setShowSignUp(true); }} />
+      <SignUpDialog open={showSignUp} onOpenChange={setShowSignUp} onSwitchToSignIn={() => { setShowSignUp(false); setShowSignIn(true); }} />
     </section>
   );
 };
