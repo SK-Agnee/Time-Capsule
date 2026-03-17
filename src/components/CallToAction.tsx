@@ -1,7 +1,13 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
+import SignInDialog from "@/components/auth/SignInDialog";
+import SignUpDialog from "@/components/auth/SignUpDialog";
 
 const CallToAction = () => {
+  const [showSignIn, setShowSignIn] = useState(false);
+  const [showSignUp, setShowSignUp] = useState(false);
+
   return (
     <section className="section-padding relative overflow-hidden">
       {/* Background Effects */}
@@ -33,7 +39,7 @@ const CallToAction = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Button variant="glow" size="xl">
+            <Button variant="glow" size="xl" onClick={() => setShowSignIn(true)}>
               Create Your Time Capsule
             </Button>
           </div>
@@ -44,6 +50,9 @@ const CallToAction = () => {
           </p>
         </div>
       </div>
+
+      <SignInDialog open={showSignIn} onOpenChange={setShowSignIn} onSwitchToSignUp={() => { setShowSignIn(false); setShowSignUp(true); }} />
+      <SignUpDialog open={showSignUp} onOpenChange={setShowSignUp} onSwitchToSignIn={() => { setShowSignUp(false); setShowSignIn(true); }} />
     </section>
   );
 };

@@ -1,8 +1,18 @@
+import { useState } from "react";
 import { Clock, Timer, Hourglass } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
 import { Button } from "@/components/ui/button";
+import SignInDialog from "@/components/auth/SignInDialog";
+import SignUpDialog from "@/components/auth/SignUpDialog";
 
 const Hero = () => {
+  const [showSignIn, setShowSignIn] = useState(false);
+  const [showSignUp, setShowSignUp] = useState(false);
+
+  const handleScrollToHowItWorks = () => {
+    document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image with Overlay */}
@@ -52,10 +62,10 @@ const Hero = () => {
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Button variant="hero" size="xl">
+            <Button variant="hero" size="xl" onClick={() => setShowSignIn(true)}>
               Create Your First Capsule
             </Button>
-            <Button variant="heroOutline" size="lg">
+            <Button variant="heroOutline" size="lg" onClick={handleScrollToHowItWorks}>
               See How It Works
             </Button>
           </div>
@@ -69,6 +79,9 @@ const Hero = () => {
 
       {/* Bottom Gradient Fade */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
+
+      <SignInDialog open={showSignIn} onOpenChange={setShowSignIn} onSwitchToSignUp={() => { setShowSignIn(false); setShowSignUp(true); }} />
+      <SignUpDialog open={showSignUp} onOpenChange={setShowSignUp} onSwitchToSignIn={() => { setShowSignUp(false); setShowSignIn(true); }} />
     </section>
   );
 };
