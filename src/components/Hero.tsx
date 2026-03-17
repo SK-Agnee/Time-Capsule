@@ -62,10 +62,10 @@ const Hero = () => {
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Button variant="hero" size="xl">
+            <Button variant="hero" size="xl" onClick={() => setShowSignIn(true)}>
               Create Your First Capsule
             </Button>
-            <Button variant="heroOutline" size="lg">
+            <Button variant="heroOutline" size="lg" onClick={handleScrollToHowItWorks}>
               See How It Works
             </Button>
           </div>
