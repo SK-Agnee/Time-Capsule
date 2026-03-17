@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Clock, Bell, Settings, LogOut, User, Shield, HelpCircle, ChevronDown } from "lucide-react";
+import { Clock, Bell, Settings, LogOut, User, Shield, HelpCircle, ChevronDown, Gift, Users, Lock, Sparkles } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
