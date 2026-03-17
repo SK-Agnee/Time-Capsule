@@ -65,10 +65,47 @@ const DashboardHeader = () => {
             <ThemeToggle />
 
             {/* Notifications */}
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
-            </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  <Bell className="w-5 h-5" />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-0">
+                <div className="p-3 border-b border-border">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold">Notifications</h4>
+                    <span className="text-xs text-primary font-medium bg-primary/10 px-2 py-0.5 rounded-full">4 new</span>
+                  </div>
+                </div>
+                <div className="max-h-72 overflow-y-auto">
+                  {[
+                    { icon: Gift, title: "Capsule Ready to Open!", desc: "Your 'Summer Memories 2024' capsule is now unlocked.", time: "2 min ago", unread: true },
+                    { icon: Users, title: "New Friend Request", desc: "Alex Johnson wants to connect with you.", time: "1 hour ago", unread: true },
+                    { icon: Lock, title: "Capsule Sealed", desc: "'Birthday Wishes' has been sealed until Dec 2025.", time: "3 hours ago", unread: true },
+                    { icon: Sparkles, title: "Memory Milestone!", desc: "You've created 10 capsules. Keep preserving memories!", time: "1 day ago", unread: true },
+                    { icon: Users, title: "Shared Capsule Update", desc: "Maya added a photo to 'Family Reunion 2024'.", time: "2 days ago", unread: false },
+                    { icon: Gift, title: "Capsule Opened", desc: "You opened 'New Year Resolutions'. How did you do?", time: "5 days ago", unread: false },
+                  ].map((n, i) => (
+                    <div key={i} className={`flex gap-3 p-3 hover:bg-muted/50 cursor-pointer transition-colors border-b border-border/50 last:border-0 ${n.unread ? "bg-primary/5" : ""}`}>
+                      <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${n.unread ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+                        <n.icon className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium leading-tight">{n.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.desc}</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">{n.time}</p>
+                      </div>
+                      {n.unread && <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />}
+                    </div>
+                  ))}
+                </div>
+                <div className="p-2 border-t border-border">
+                  <Button variant="ghost" size="sm" className="w-full text-xs text-primary">View all notifications</Button>
+                </div>
+              </PopoverContent>
+            </Popover>
 
             {/* Settings Dropdown */}
             <DropdownMenu>
