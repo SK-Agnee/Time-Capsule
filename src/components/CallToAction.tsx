@@ -39,7 +39,7 @@ const CallToAction = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Button variant="glow" size="xl">
+            <Button variant="glow" size="xl" onClick={() => setShowSignIn(true)}>
               Create Your Time Capsule
             </Button>
           </div>
