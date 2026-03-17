@@ -5,6 +5,9 @@ import SignInDialog from "@/components/auth/SignInDialog";
 import SignUpDialog from "@/components/auth/SignUpDialog";
 
 const CallToAction = () => {
+  const [showSignIn, setShowSignIn] = useState(false);
+  const [showSignUp, setShowSignUp] = useState(false);
+
   return (
     <section className="section-padding relative overflow-hidden">
       {/* Background Effects */}
