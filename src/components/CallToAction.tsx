@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
+import SignInDialog from "@/components/auth/SignInDialog";
+import SignUpDialog from "@/components/auth/SignUpDialog";
 
 const CallToAction = () => {
   return (
