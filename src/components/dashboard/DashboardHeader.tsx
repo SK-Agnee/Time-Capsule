@@ -53,12 +53,12 @@ const DashboardHeader = () => {
       <div className="container-narrow">
         <nav className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center group-hover:shadow-lg group-hover:shadow-primary/30 transition-shadow duration-300">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
               <Clock className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="text-lg font-serif font-medium">Time Capsule</span>
-          </Link>
+          </div>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
