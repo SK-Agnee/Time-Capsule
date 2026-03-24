@@ -4,6 +4,18 @@ import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+type Capsule = {
+  _id: string;
+  title: string;
+  message: string;
+  unlockDate: string;
+  createdAt: string;
+  image?: string;
+  video?: string;
+  audio?: string;
+  viewed?: boolean; // ✅ IMPORTANT
+};
+
 
 const getStatusStyles = (status) => {
   switch (status) {
@@ -41,17 +53,28 @@ const getCountdown = (diff) => {
   return `${days}d ${hours}h left`;
 };
 
-const MyCapsules = ({ capsules }) => {
+const MyCapsules = ({ capsules }: { capsules: Capsule[] }) => {
   const [time, setTime] = useState(Date.now());
   const [selectedCapsule, setSelectedCapsule] = useState(null);
   const [showModal, setShowModal] = useState(false);
-useEffect(() => {
-  const interval = setInterval(() => {
-    setTime(Date.now());
-  }, 1000);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTime(Date.now());
+    }, 1000);
 
-  return () => clearInterval(interval);
-}, []);
+    return () => clearInterval(interval);
+  }, []);
+
+  const upcomingCapsules = capsules.filter(
+    (c) =>
+      new Date(c.unlockDate).getTime() > time || !c.viewed
+  );
+
+  const unlockedCapsules = capsules.filter(
+    (c) =>
+      new Date(c.unlockDate).getTime() <= time && c.viewed
+  );
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Capsules List */}
@@ -59,12 +82,12 @@ useEffect(() => {
         <CardHeader>
           <CardTitle className="text-xl font-serif flex items-center gap-2">
             <Diamond className="w-5 h-5 text-primary" />
-            My Capsules
+            Upcoming Capsules
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {capsules.map((c, index) => {
+            {upcomingCapsules.map((c, index) => {
               const createdYear = new Date(c.createdAt).getFullYear();
               const unlockDate = c.unlockDate ? new Date(c.unlockDate) : new Date();
               const unlockYear = unlockDate.getFullYear();
@@ -86,9 +109,16 @@ useEffect(() => {
               return (
                 <div
                   key={index}
-                  onClick={() => {
+                  onClick={async () => {
                     setSelectedCapsule(c);
                     setShowModal(true);
+
+                    const isUnlocked = new Date(c.unlockDate).getTime() <= Date.now();
+
+                    if (isUnlocked && !c.viewed) {
+                      await axios.put(`http://localhost:5000/api/capsules/view/${c._id}`);
+                      c.viewed = true; // update locally
+                    }
                   }}
                   className={`p-4 rounded-lg border transition-all hover:border-primary/50 cursor-pointer ${getStatusStyles(status)}`}
                 >
@@ -151,27 +181,34 @@ useEffect(() => {
         <CardHeader>
           <CardTitle className="text-lg font-serif flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary" />
-            Upcoming Unlocks
+            Unlocked Capsules
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="p-4 rounded-lg bg-capsule-unlocking border border-primary/20">
-            <p className="text-sm text-foreground mb-1">College Graduation Vault</p>
-            <p className="text-xs text-muted-foreground mb-2">Message from Dec 25, 2022</p>
-            <div className="flex items-center gap-2 text-primary">
-              <Clock className="w-4 h-4" />
-              <span className="text-sm font-medium">204 days left</span>
-            </div>
-          </div>
+          {unlockedCapsules.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No unlocked capsules yet
+            </p>
+          ) : (
+            unlockedCapsules.map((c, index) => (
+              <div
+                key={index}
+                onClick={() => {
+                  setSelectedCapsule(c);
+                  setShowModal(true);
+                }}
+                className="p-4 rounded-lg bg-muted/30 border border-border/30 cursor-pointer hover:border-primary/50"
+              >
+                <p className="text-sm font-medium text-foreground">
+                  {c.title}
+                </p>
 
-          <div className="p-4 rounded-lg bg-muted/30 border border-border/30">
-            <p className="text-sm text-foreground mb-1">Birthday Surprise 2025</p>
-            <p className="text-xs text-muted-foreground mb-2">Video message</p>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Clock className="w-4 h-4" />
-              <span className="text-sm">1 year, 45 days</span>
-            </div>
-          </div>
+                <p className="text-xs text-muted-foreground">
+                  Click to view
+                </p>
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
       {selectedCapsule && (
@@ -205,11 +242,44 @@ useEffect(() => {
       </p>
 
       {/* Message */}
-      <div className="bg-muted p-4 rounded-md">
-        {new Date(selectedCapsule.unlockDate).getTime() > Date.now()
-          ? "🔒 This capsule is still locked"
-          : selectedCapsule.message}
-      </div>
+      <div className="bg-muted p-4 rounded-md space-y-3">
+  {new Date(selectedCapsule.unlockDate).getTime() > Date.now() ? (
+    "🔒 This capsule is still locked"
+  ) : (
+    <>
+      {/* Message */}
+      <p>{selectedCapsule.message}</p>
+
+      {/* ✅ Image */}
+      {selectedCapsule.image && (
+        <img
+          src={`http://localhost:5000/${selectedCapsule.image}`}
+          alt="capsule"
+          className="rounded-lg max-h-60 w-full object-cover"
+        />
+      )}
+      {selectedCapsule.video && (
+        <video
+          controls
+          className="rounded-lg max-h-60 w-full"
+        >
+          <source
+            src={`http://localhost:5000/${selectedCapsule.video}`}
+            type="video/mp4"
+          />
+        </video>
+      )}
+      {selectedCapsule.audio && (
+        <audio controls className="w-full">
+          <source
+            src={`http://localhost:5000/${selectedCapsule.audio}`}
+            type="audio/mpeg"
+          />
+        </audio>
+      )}
+    </>
+  )}
+</div>
     </div>
   </div>
 )}

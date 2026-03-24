@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Upload, Image, Video, Mic, MessageSquare, Calendar, Lock, Sparkles, Clock, LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +34,25 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
   const [message, setMessage] = useState("");
   const [unlockDate, setUnlockDate] = useState<Date | undefined>();
   const [unlockTime, setUnlockTime] = useState("12:00");
+  const [image, setImage] = useState(null);
+  const [video, setVideo] = useState(null);
+  const [audio, setAudio] = useState(null);
+
+  useEffect(() => {
+    if (!unlockDate) return;
+
+    const now = new Date();
+    const selected = new Date(unlockDate);
+
+    if (selected.toDateString() === now.toDateString()) {
+      const minTime = new Date(Date.now() + 60000);
+
+      const hh = String(minTime.getHours()).padStart(2, "0");
+      const mm = String(minTime.getMinutes()).padStart(2, "0");
+
+      setUnlockTime(`${hh}:${mm}`);
+    }
+  }, [unlockDate]);
   
   const toggleType = (typeId: string) => {
     setSelectedTypes((prev) =>
@@ -43,6 +62,10 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
 
   const handleCreateCapsule = async () => {
   try {
+    if (!title.trim()) {
+      alert("Title is required");
+      return;
+    }
     const user = JSON.parse(localStorage.getItem("capsule_current_user") || "{}");
 
     if (!user?._id) {
@@ -57,14 +80,42 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
       const [hours, minutes] = unlockTime.split(":");
       finalDate.setHours(Number(hours));
       finalDate.setMinutes(Number(minutes));
+      finalDate.setSeconds(0);
     }
 
-    const res = await axios.post("http://localhost:5000/api/capsules", {
-      title,
-      message,
-      unlockDate: finalDate,
-      userId: user._id
-    });
+    // ✅ ADD THIS JUST BELOW
+    const minAllowed = new Date(Date.now() + 60000);
+
+    if (finalDate <= minAllowed) {
+      alert("Unlock time must be at least 1 minute in the future");
+      return;
+    }
+
+    const formData = new FormData();
+
+    formData.append("title", title);
+    formData.append("message", message);
+    formData.append("unlockDate", finalDate.toISOString());
+    formData.append("userId", user._id);
+
+    if (image) formData.append("image", image);
+    if (video) formData.append("video", video);
+    if (audio) formData.append("audio", audio);
+
+    // ✅ ADD THIS (image)
+    if (image) {
+      formData.append("image", image);
+    }
+
+    const res = await axios.post(
+      "http://localhost:5000/api/capsules",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
 
     console.log(res.data);
 
@@ -104,6 +155,7 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
               placeholder="Name your time capsule..."
               className="bg-muted/30 border-border/50 focus:border-primary"
             />
+            
           </div>
 
           {/* Content Types */}
@@ -133,9 +185,42 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
           {/* Upload Area */}
           {selectedTypes.length > 0 && (
             <div className="border-2 border-dashed border-border/50 rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
-              <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
-              <p className="text-foreground font-medium mb-1">Drop files here or click to upload</p>
-              <p className="text-sm text-muted-foreground">Support for images, videos, and audio files</p>
+
+              <input
+                type="file"
+                accept="image/*,video/*,audio/*"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+
+                  if (file.type.startsWith("image")) {
+                    setImage(file);
+                  } else if (file.type.startsWith("video")) {
+                    setVideo(file);
+                  } else if (file.type.startsWith("audio")) {
+                    setAudio(file);
+                  }
+                }}
+              />
+
+              <label htmlFor="imageUpload" className="cursor-pointer">
+                <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-foreground font-medium mb-1">
+                  Click to upload image
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  JPG, PNG supported
+                </p>
+              </label>
+
+              {/* Preview */}
+              {image && (
+                <img
+                  src={URL.createObjectURL(image)}
+                  alt="preview"
+                  className="mt-4 mx-auto max-h-40 rounded"
+                />
+              )}
             </div>
           )}
 
@@ -176,7 +261,11 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
                     mode="single"
                     selected={unlockDate}
                     onSelect={setUnlockDate}
-                    disabled={(date) => date < new Date()}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today; // allows today, blocks past days
+                    }}
                     initialFocus
                     className={cn("p-3 pointer-events-auto")}
                   />
