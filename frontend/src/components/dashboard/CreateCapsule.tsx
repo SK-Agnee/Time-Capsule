@@ -19,11 +19,12 @@ interface ContentType {
 }
 
 const contentTypes: ContentType[] = [
-  { id: "photos", icon: Image, label: "Photos", description: "Upload photos & images" },
-  { id: "videos", icon: Video, label: "Videos", description: "Record or upload videos" },
+  { id: "image", icon: Image, label: "Photos", description: "Upload photos & images" },
+  { id: "video", icon: Video, label: "Videos", description: "Record or upload videos" },
   { id: "audio", icon: Mic, label: "Audio", description: "Record voice messages" },
   { id: "text", icon: MessageSquare, label: "Message", description: "Write a letter" },
 ];
+
 interface Props {
   onCapsuleCreated?: () => void;
 }
@@ -34,9 +35,10 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
   const [message, setMessage] = useState("");
   const [unlockDate, setUnlockDate] = useState<Date | undefined>();
   const [unlockTime, setUnlockTime] = useState("12:00");
-  const [image, setImage] = useState(null);
-  const [video, setVideo] = useState(null);
-  const [audio, setAudio] = useState(null);
+  const [image, setImage] = useState<File | null>(null);
+  const [video, setVideo] = useState<File | null>(null);
+  const [audio, setAudio] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!unlockDate) return;
@@ -46,93 +48,210 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
 
     if (selected.toDateString() === now.toDateString()) {
       const minTime = new Date(Date.now() + 60000);
-
       const hh = String(minTime.getHours()).padStart(2, "0");
       const mm = String(minTime.getMinutes()).padStart(2, "0");
-
       setUnlockTime(`${hh}:${mm}`);
     }
   }, [unlockDate]);
-  
+
+  // Clear preview when file changes
+  useEffect(() => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    if (image) {
+      setPreviewUrl(URL.createObjectURL(image));
+    } else if (video) {
+      setPreviewUrl(URL.createObjectURL(video));
+    } else if (audio) {
+      setPreviewUrl(URL.createObjectURL(audio));
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [image, video, audio]);
+
   const toggleType = (typeId: string) => {
-    setSelectedTypes((prev) =>
-      prev.includes(typeId) ? prev.filter((id) => id !== typeId) : [...prev, typeId]
-    );
+    setSelectedTypes((prev) => {
+      const newSelected = prev.includes(typeId) 
+        ? prev.filter((id) => id !== typeId) 
+        : [...prev, typeId];
+      
+      // Clear file when deselecting type
+      if (prev.includes(typeId)) {
+        if (typeId === "image") setImage(null);
+        if (typeId === "video") setVideo(null);
+        if (typeId === "audio") setAudio(null);
+      }
+      
+      return newSelected;
+    });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      alert("File size must be less than 50MB");
+      return;
+    }
+
+    if (type === "image") {
+      if (!file.type.startsWith("image/")) {
+        alert("Please select a valid image file");
+        return;
+      }
+      setImage(file);
+    } else if (type === "video") {
+      if (!file.type.startsWith("video/")) {
+        alert("Please select a valid video file");
+        return;
+      }
+      setVideo(file);
+    } else if (type === "audio") {
+      if (!file.type.startsWith("audio/")) {
+        alert("Please select a valid audio file");
+        return;
+      }
+      setAudio(file);
+    }
   };
 
   const handleCreateCapsule = async () => {
-  try {
-    if (!title.trim()) {
-      alert("Title is required");
-      return;
-    }
-    const user = JSON.parse(localStorage.getItem("capsule_current_user") || "{}");
-
-    if (!user?._id) {
-      alert("User not logged in");
-      return;
-    }
-
-    // combine date + time
-    let finalDate = unlockDate ? new Date(unlockDate) : new Date();
-
-    if (unlockTime) {
-      const [hours, minutes] = unlockTime.split(":");
-      finalDate.setHours(Number(hours));
-      finalDate.setMinutes(Number(minutes));
-      finalDate.setSeconds(0);
-    }
-
-    // ✅ ADD THIS JUST BELOW
-    const minAllowed = new Date(Date.now() + 60000);
-
-    if (finalDate <= minAllowed) {
-      alert("Unlock time must be at least 1 minute in the future");
-      return;
-    }
-
-    const formData = new FormData();
-
-    formData.append("title", title);
-    formData.append("message", message);
-    formData.append("unlockDate", finalDate.toISOString());
-    formData.append("userId", user._id);
-
-    if (image) formData.append("image", image);
-    if (video) formData.append("video", video);
-    if (audio) formData.append("audio", audio);
-
-    // ✅ ADD THIS (image)
-    if (image) {
-      formData.append("image", image);
-    }
-
-    const res = await axios.post(
-      "http://localhost:5000/api/capsules",
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+    try {
+      if (!title.trim()) {
+        alert("Title is required");
+        return;
       }
-    );
 
-    console.log(res.data);
+      const user = JSON.parse(localStorage.getItem("capsule_current_user") || "{}");
+      if (!user?._id) {
+        alert("User not logged in");
+        return;
+      }
 
-    alert("Capsule Created Successfully!");
-    if (onCapsuleCreated) {
-      onCapsuleCreated();
+      // Combine date + time
+      let finalDate = unlockDate ? new Date(unlockDate) : new Date();
+      if (unlockTime) {
+        const [hours, minutes] = unlockTime.split(":");
+        finalDate.setHours(Number(hours));
+        finalDate.setMinutes(Number(minutes));
+        finalDate.setSeconds(0);
+      }
+
+      // Check if unlock time is at least 1 minute in the future
+      const minAllowed = new Date(Date.now() + 60000);
+      if (finalDate <= minAllowed) {
+        alert("Unlock time must be at least 1 minute in the future");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("message", message);
+      formData.append("unlockDate", finalDate.toISOString());
+      formData.append("userId", user._id);
+
+      // Only append files if they exist
+      if (image) formData.append("image", image);
+      if (video) formData.append("video", video);
+      if (audio) formData.append("audio", audio);
+
+      const res = await axios.post(
+        "http://localhost:5000/api/capsules",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      console.log(res.data);
+      alert("Capsule Created Successfully!");
+      
+      // Reset form
+      setTitle("");
+      setMessage("");
+      setUnlockDate(undefined);
+      setUnlockTime("12:00");
+      setSelectedTypes([]);
+      setImage(null);
+      setVideo(null);
+      setAudio(null);
+      setPreviewUrl(null);
+      
+      if (onCapsuleCreated) {
+        onCapsuleCreated();
+      }
+    } catch (err: any) {
+      console.error(err.response?.data || err.message);
+      alert(err.response?.data?.error || "Error creating capsule");
+    }
+  };
+
+  const getUploadAreaContent = () => {
+    if (previewUrl) {
+      if (image) {
+        return (
+          <div className="space-y-2">
+            <img
+              src={previewUrl}
+              alt="preview"
+              className="mx-auto max-h-40 rounded object-contain"
+            />
+            <button
+              onClick={() => setImage(null)}
+              className="text-xs text-red-400 hover:text-red-300"
+            >
+              Remove image
+            </button>
+          </div>
+        );
+      } else if (video) {
+        return (
+          <div className="space-y-2">
+            <video controls className="mx-auto max-h-40 rounded">
+              <source src={previewUrl} type={video.type} />
+            </video>
+            <button
+              onClick={() => setVideo(null)}
+              className="text-xs text-red-400 hover:text-red-300"
+            >
+              Remove video
+            </button>
+          </div>
+        );
+      } else if (audio) {
+        return (
+          <div className="space-y-2">
+            <audio controls className="w-full">
+              <source src={previewUrl} type={audio.type} />
+            </audio>
+            <button
+              onClick={() => setAudio(null)}
+              className="text-xs text-red-400 hover:text-red-300"
+            >
+              Remove audio
+            </button>
+          </div>
+        );
+      }
     }
 
-    setTitle("");
-    setMessage("");
-    setUnlockDate(undefined);
-
-  } catch (err) {
-    console.error(err.response?.data || err.message);
-    alert("Error creating capsule");
-  }
-};
+    return (
+      <>
+        <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+        <p className="text-foreground font-medium mb-1">
+          Click to upload
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Max file size: 50MB
+        </p>
+      </>
+    );
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -155,7 +274,6 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
               placeholder="Name your time capsule..."
               className="bg-muted/30 border-border/50 focus:border-primary"
             />
-            
           </div>
 
           {/* Content Types */}
@@ -182,45 +300,99 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
             </div>
           </div>
 
-          {/* Upload Area */}
-          {selectedTypes.length > 0 && (
-            <div className="border-2 border-dashed border-border/50 rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
-
+          {/* Upload Area - Dynamic based on selected types */}
+          {selectedTypes.includes("image") && (
+            <div className="border-2 border-dashed border-border/50 rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
               <input
                 type="file"
-                accept="image/*,video/*,audio/*"
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (!file) return;
-
-                  if (file.type.startsWith("image")) {
-                    setImage(file);
-                  } else if (file.type.startsWith("video")) {
-                    setVideo(file);
-                  } else if (file.type.startsWith("audio")) {
-                    setAudio(file);
-                  }
-                }}
+                accept="image/*"
+                onChange={(e) => handleFileChange(e, "image")}
+                className="hidden"
+                id="image-upload"
               />
-
-              <label htmlFor="imageUpload" className="cursor-pointer">
-                <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
-                <p className="text-foreground font-medium mb-1">
-                  Click to upload image
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  JPG, PNG supported
-                </p>
+              <label htmlFor="image-upload" className="cursor-pointer block">
+                {getUploadAreaContent()}
               </label>
+            </div>
+          )}
 
-              {/* Preview */}
-              {image && (
-                <img
-                  src={URL.createObjectURL(image)}
-                  alt="preview"
-                  className="mt-4 mx-auto max-h-40 rounded"
-                />
-              )}
+          {selectedTypes.includes("video") && (
+            <div className="border-2 border-dashed border-border/50 rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
+              <input
+                type="file"
+                accept="video/*"
+                onChange={(e) => handleFileChange(e, "video")}
+                className="hidden"
+                id="video-upload"
+              />
+              <label htmlFor="video-upload" className="cursor-pointer block">
+                {video ? (
+                  <div className="space-y-2">
+                    <video controls className="mx-auto max-h-40 rounded">
+                      <source src={URL.createObjectURL(video)} type={video.type} />
+                    </video>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setVideo(null);
+                      }}
+                      className="text-xs text-red-400 hover:text-red-300"
+                    >
+                      Remove video
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+                    <p className="text-foreground font-medium mb-1">
+                      Click to upload video
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      MP4, WebM supported (max 50MB)
+                    </p>
+                  </>
+                )}
+              </label>
+            </div>
+          )}
+
+          {selectedTypes.includes("audio") && (
+            <div className="border-2 border-dashed border-border/50 rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
+              <input
+                type="file"
+                accept="audio/*"
+                onChange={(e) => handleFileChange(e, "audio")}
+                className="hidden"
+                id="audio-upload"
+              />
+              <label htmlFor="audio-upload" className="cursor-pointer block">
+                {audio ? (
+                  <div className="space-y-2">
+                    <audio controls className="w-full">
+                      <source src={URL.createObjectURL(audio)} type={audio.type} />
+                    </audio>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setAudio(null);
+                      }}
+                      className="text-xs text-red-400 hover:text-red-300"
+                    >
+                      Remove audio
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+                    <p className="text-foreground font-medium mb-1">
+                      Click to upload audio
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      MP3, WAV supported (max 50MB)
+                    </p>
+                  </>
+                )}
+              </label>
             </div>
           )}
 
@@ -264,7 +436,7 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
                     disabled={(date) => {
                       const today = new Date();
                       today.setHours(0, 0, 0, 0);
-                      return date < today; // allows today, blocks past days
+                      return date < today;
                     }}
                     initialFocus
                     className={cn("p-3 pointer-events-auto")}

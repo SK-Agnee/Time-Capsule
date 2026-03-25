@@ -1,4 +1,4 @@
-import { Clock, Lock, Unlock, Diamond } from "lucide-react";
+import { Clock, Lock, Unlock, Diamond, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useEffect, useState } from "react";
@@ -15,7 +15,6 @@ type Capsule = {
   audio?: string;
   viewed?: boolean; // ✅ IMPORTANT
 };
-
 
 const getStatusStyles = (status) => {
   switch (status) {
@@ -44,7 +43,6 @@ const getStatusIcon = (status) => {
 };
 
 const getCountdown = (diff) => {
-
   if (diff <= 0) return "Unlocked";
 
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -53,10 +51,16 @@ const getCountdown = (diff) => {
   return `${days}d ${hours}h left`;
 };
 
-const MyCapsules = ({ capsules }: { capsules: Capsule[] }) => {
+const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCapsuleDeleted?: () => void }) => {
   const [time, setTime] = useState(Date.now());
   const [selectedCapsule, setSelectedCapsule] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [localCapsules, setLocalCapsules] = useState<Capsule[]>(capsules);
+  
+  useEffect(() => {
+    setLocalCapsules(capsules);
+  }, [capsules]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTime(Date.now());
@@ -65,15 +69,47 @@ const MyCapsules = ({ capsules }: { capsules: Capsule[] }) => {
     return () => clearInterval(interval);
   }, []);
 
-  const upcomingCapsules = capsules.filter(
+  const upcomingCapsules = localCapsules.filter(
     (c) =>
       new Date(c.unlockDate).getTime() > time || !c.viewed
   );
 
-  const unlockedCapsules = capsules.filter(
+  const unlockedCapsules = localCapsules.filter(
     (c) =>
       new Date(c.unlockDate).getTime() <= time && c.viewed
   );
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // prevents opening modal
+    
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this capsule?"
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      await axios.delete(`http://localhost:5000/api/capsules/${id}`);
+      
+      // Update local state to remove deleted capsule
+      setLocalCapsules(prev => prev.filter(c => c._id !== id));
+      
+      // Close modal if the deleted capsule was open
+      if (selectedCapsule?._id === id) {
+        setShowModal(false);
+        setSelectedCapsule(null);
+      }
+      
+      // Call the callback if provided
+      if (onCapsuleDeleted) {
+        onCapsuleDeleted();
+      }
+      
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting capsule");
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -117,29 +153,43 @@ const MyCapsules = ({ capsules }: { capsules: Capsule[] }) => {
 
                     if (isUnlocked && !c.viewed) {
                       await axios.put(`http://localhost:5000/api/capsules/view/${c._id}`);
-                      c.viewed = true; // update locally
+                      // Update local state to mark as viewed
+                      setLocalCapsules(prev => prev.map(capsule => 
+                        capsule._id === c._id ? { ...capsule, viewed: true } : capsule
+                      ));
                     }
                   }}
                   className={`p-4 rounded-lg border transition-all hover:border-primary/50 cursor-pointer ${getStatusStyles(status)}`}
                 >
                   <div className="mb-2">
                     <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {getStatusIcon(status)}
-                      <span className="font-medium text-foreground">{c.title}</span>
-                    </div>
+                      <div className="flex items-center gap-3">
+                        {getStatusIcon(status)}
+                        <span className="font-medium text-foreground">{c.title}</span>
+                      </div>
 
-                    {/* ✅ UNLOCK BADGE */}
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        status === "opened"
-                          ? "bg-green-500/20 text-green-400 shadow-sm"
-                          : "bg-yellow-500/20 text-yellow-400"
-                      }`}
-                    >
-                      {status === "opened" ? "🎉 Unlocked" : "🔒 Locked"}
-                    </span>
-                  </div>
+                      <div className="flex items-center gap-2">
+                        {/* DELETE BUTTON */}
+                        <button
+                          onClick={(e) => handleDelete(c._id, e)}
+                          className="text-red-400 hover:text-red-300 transition-colors p-1"
+                          title="Delete capsule"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+
+                        {/* UNLOCK BADGE */}
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            status === "opened"
+                              ? "bg-green-500/20 text-green-400 shadow-sm"
+                              : "bg-yellow-500/20 text-yellow-400"
+                          }`}
+                        >
+                          {status === "opened" ? "🎉 Unlocked" : "🔒 Locked"}
+                        </span>
+                      </div>
+                    </div>
 
                     <p className="text-sm mt-1 text-muted-foreground">
                       {unlockDate.getTime() > time
@@ -169,14 +219,14 @@ const MyCapsules = ({ capsules }: { capsules: Capsule[] }) => {
           <div className="mt-6 flex items-center justify-between text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Diamond className="w-4 h-4 text-primary" />
-              <span>1 of 39</span>
+              <span>{upcomingCapsules.length} of {localCapsules.length}</span>
             </div>
             <span>{new Date().getFullYear()}</span>
           </div>
         </CardContent>
       </Card>
 
-      {/* Upcoming Unlocks */}
+      {/* Unlocked Capsules */}
       <Card className="bg-card/50 border-border/30 backdrop-blur-sm">
         <CardHeader>
           <CardTitle className="text-lg font-serif flex items-center gap-2">
@@ -197,13 +247,24 @@ const MyCapsules = ({ capsules }: { capsules: Capsule[] }) => {
                   setSelectedCapsule(c);
                   setShowModal(true);
                 }}
-                className="p-4 rounded-lg bg-muted/30 border border-border/30 cursor-pointer hover:border-primary/50"
+                className="p-4 rounded-lg bg-muted/30 border border-border/30 cursor-pointer hover:border-primary/50 group"
               >
-                <p className="text-sm font-medium text-foreground">
-                  {c.title}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">
+                    {c.title}
+                  </p>
+                  
+                  {/* DELETE BUTTON */}
+                  <button
+                    onClick={(e) => handleDelete(c._id, e)}
+                    className="text-red-400 hover:text-red-300 transition-colors p-1 opacity-0 group-hover:opacity-100"
+                    title="Delete capsule"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
 
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground mt-1">
                   Click to view
                 </p>
               </div>
@@ -211,80 +272,79 @@ const MyCapsules = ({ capsules }: { capsules: Capsule[] }) => {
           )}
         </CardContent>
       </Card>
+      
       {selectedCapsule && (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div
-  className={`bg-card p-6 rounded-xl max-w-md w-full relative transform transition-all duration-300 ${
-    showModal ? "scale-100 opacity-100" : "scale-90 opacity-0"
-  }`}
->
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div
+            className={`bg-card p-6 rounded-xl max-w-md w-full relative transform transition-all duration-300 ${
+              showModal ? "scale-100 opacity-100" : "scale-90 opacity-0"
+            }`}
+          >
+            {/* Close Button */}
+            <button
+              className="absolute top-2 right-3 text-lg hover:text-red-400 transition-colors"
+              onClick={() => {
+                setShowModal(false);
+                setTimeout(() => setSelectedCapsule(null), 200);
+              }}
+            >
+              ✖
+            </button>
 
-      {/* Close Button */}
-      <button
-        className="absolute top-2 right-3 text-lg"
-        onClick={() => {
-          setShowModal(false);
-          setTimeout(() => setSelectedCapsule(null), 200);
-        }}
-      >
-        ✖
-      </button>
+            {/* Title */}
+            <h2 className="text-xl font-semibold mb-2">
+              {selectedCapsule.title}
+            </h2>
 
-      {/* Title */}
-      <h2 className="text-xl font-semibold mb-2">
-        {selectedCapsule.title}
-      </h2>
+            {/* Unlock Info */}
+            <p className="text-sm text-muted-foreground mb-4">
+              Unlocks on{" "}
+              {new Date(selectedCapsule.unlockDate).toDateString()}
+            </p>
 
-      {/* Unlock Info */}
-      <p className="text-sm text-muted-foreground mb-4">
-        Unlocks on{" "}
-        {new Date(selectedCapsule.unlockDate).toDateString()}
-      </p>
+            {/* Message */}
+            <div className="bg-muted p-4 rounded-md space-y-3">
+              {new Date(selectedCapsule.unlockDate).getTime() > Date.now() ? (
+                "🔒 This capsule is still locked"
+              ) : (
+                <>
+                  {/* Message */}
+                  <p>{selectedCapsule.message}</p>
 
-      {/* Message */}
-      <div className="bg-muted p-4 rounded-md space-y-3">
-  {new Date(selectedCapsule.unlockDate).getTime() > Date.now() ? (
-    "🔒 This capsule is still locked"
-  ) : (
-    <>
-      {/* Message */}
-      <p>{selectedCapsule.message}</p>
-
-      {/* ✅ Image */}
-      {selectedCapsule.image && (
-        <img
-          src={`http://localhost:5000/${selectedCapsule.image}`}
-          alt="capsule"
-          className="rounded-lg max-h-60 w-full object-cover"
-        />
+                  {/* Image */}
+                  {selectedCapsule.image && (
+                    <img
+                      src={`http://localhost:5000/${selectedCapsule.image}`}
+                      alt="capsule"
+                      className="rounded-lg max-h-60 w-full object-cover"
+                    />
+                  )}
+                  {selectedCapsule.video && (
+                    <video
+                      controls
+                      className="rounded-lg max-h-60 w-full"
+                    >
+                      <source
+                        src={`http://localhost:5000/${selectedCapsule.video}`}
+                        type="video/mp4"
+                      />
+                    </video>
+                  )}
+                  {selectedCapsule.audio && (
+                    <audio controls className="w-full">
+                      <source
+                        src={`http://localhost:5000/${selectedCapsule.audio}`}
+                        type="audio/mpeg"
+                      />
+                    </audio>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
-      {selectedCapsule.video && (
-        <video
-          controls
-          className="rounded-lg max-h-60 w-full"
-        >
-          <source
-            src={`http://localhost:5000/${selectedCapsule.video}`}
-            type="video/mp4"
-          />
-        </video>
-      )}
-      {selectedCapsule.audio && (
-        <audio controls className="w-full">
-          <source
-            src={`http://localhost:5000/${selectedCapsule.audio}`}
-            type="audio/mpeg"
-          />
-        </audio>
-      )}
-    </>
-  )}
-</div>
     </div>
-  </div>
-)}
-    </div>
-    
   );
 };
 
