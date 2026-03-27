@@ -4,7 +4,7 @@ import CreateCapsule from "./CreateCapsule";
 import FriendsVaults from "./FriendsVaults";
 import Discovery from "./Discovery";
 
-const DashboardTabs = ({ capsules, onCapsuleCreated }) => {
+const DashboardTabs = ({ capsules, onCapsuleCreated, onCapsuleDeleted, openCapsuleId, onCapsuleOpened }) => {
   return (
     <Tabs defaultValue="my-capsules" className="w-full">
       <TabsList className="bg-card border border-border/50 h-12 p-1 gap-1">
@@ -35,7 +35,12 @@ const DashboardTabs = ({ capsules, onCapsuleCreated }) => {
       </TabsList>
 
       <TabsContent value="my-capsules" className="mt-6">
-        <MyCapsules capsules={capsules} />
+        <MyCapsules 
+          capsules={capsules} 
+          onCapsuleDeleted={onCapsuleDeleted}
+          openCapsuleId={openCapsuleId}
+          onCapsuleOpened={onCapsuleOpened}
+        />
       </TabsContent>
       <TabsContent value="create-new" className="mt-6">
         <CreateCapsule onCapsuleCreated={onCapsuleCreated} />

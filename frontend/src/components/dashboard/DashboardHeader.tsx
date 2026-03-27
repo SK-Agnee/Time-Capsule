@@ -13,15 +13,43 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ThemeToggle from "@/components/ThemeToggle";
 import { toast } from "@/hooks/use-toast";
+import axios from "axios";
+import { format } from "date-fns";
 
 interface UserData {
   name: string;
   email: string;
+  _id: string;
+}
+
+interface Capsule {
+  _id: string;
+  title: string;
+  message: string;
+  unlockDate: string;
+  createdAt: string;
+  image?: string;
+  video?: string;
+  audio?: string;
+  viewed?: boolean;
+}
+
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  capsuleId: string;
+  timestamp: Date;
+  read: boolean;
+  type: "capsule_unlocked" | "capsule_sealed" | "milestone" | "shared";
 }
 
 const DashboardHeader = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<UserData | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [hasUnread, setHasUnread] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     const currentUser = localStorage.getItem("capsule_current_user");
@@ -30,6 +58,81 @@ const DashboardHeader = () => {
     }
   }, []);
 
+  // Fetch notifications from localStorage or API
+  const fetchNotifications = async () => {
+    if (!user?._id) return;
+
+    try {
+      // Get notifications from localStorage
+      const storedNotifications = localStorage.getItem(`notifications_${user._id}`);
+      if (storedNotifications) {
+        const parsed = JSON.parse(storedNotifications);
+        setNotifications(parsed);
+        setHasUnread(parsed.some((n: Notification) => !n.read));
+      }
+
+      // Check for newly unlocked capsules
+      const response = await axios.get(`http://localhost:5000/api/capsules/${user._id}`);
+      const capsules = response.data;
+      const now = Date.now();
+
+      // Find newly unlocked capsules that haven't been notified
+      const storedUnlockedIds = JSON.parse(localStorage.getItem(`unlocked_notified_${user._id}`) || "[]");
+      
+      const newlyUnlocked = capsules.filter(c => {
+        const isUnlocked = new Date(c.unlockDate).getTime() <= now;
+        const notNotified = !storedUnlockedIds.includes(c._id);
+        return isUnlocked && notNotified && !c.viewed;
+      });
+
+      // Create notifications for newly unlocked capsules
+      if (newlyUnlocked.length > 0) {
+        const newNotifications: Notification[] = newlyUnlocked.map(capsule => ({
+          id: Date.now().toString() + Math.random(),
+          title: "🎉 Capsule Unlocked!",
+          message: `"${capsule.title}" is now ready to open`,
+          capsuleId: capsule._id,
+          timestamp: new Date(),
+          read: false,
+          type: "capsule_unlocked"
+        }));
+
+        // Update stored notifications
+        const existingNotifications = storedNotifications ? JSON.parse(storedNotifications) : [];
+        const updatedNotifications = [...newNotifications, ...existingNotifications];
+        setNotifications(updatedNotifications);
+        setHasUnread(true);
+        
+        // Save to localStorage
+        localStorage.setItem(`notifications_${user._id}`, JSON.stringify(updatedNotifications));
+        
+        // Update unlocked IDs
+        const newUnlockedIds = [...storedUnlockedIds, ...newlyUnlocked.map(c => c._id)];
+        localStorage.setItem(`unlocked_notified_${user._id}`, JSON.stringify(newUnlockedIds));
+        
+        // Show toast for new notifications
+        newNotifications.forEach(notification => {
+          toast({
+            title: notification.title,
+            description: notification.message,
+            duration: 5000,
+          });
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    }
+  };
+
+  // Check for notifications every minute
+  useEffect(() => {
+    if (user?._id) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 60000); // Check every minute
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
   const handleLogout = () => {
     localStorage.removeItem("capsule_current_user");
     toast({
@@ -37,6 +140,92 @@ const DashboardHeader = () => {
       description: "You have been successfully logged out.",
     });
     navigate("/");
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    // Mark as read
+    const updatedNotifications = notifications.map(n =>
+      n.id === notification.id ? { ...n, read: true } : n
+    );
+    setNotifications(updatedNotifications);
+    setHasUnread(updatedNotifications.some(n => !n.read));
+    
+    // Save to localStorage
+    if (user?._id) {
+      localStorage.setItem(`notifications_${user._id}`, JSON.stringify(updatedNotifications));
+    }
+    
+    setShowNotifications(false);
+    
+    // Navigate to dashboard and open the capsule
+    if (notification.capsuleId) {
+      // Store the capsule ID to open in session storage
+      sessionStorage.setItem("open_capsule_id", notification.capsuleId);
+      navigate("/dashboard");
+      // Dispatch event to open the capsule
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("openCapsule", { detail: { capsuleId: notification.capsuleId } }));
+      }, 100);
+    }
+  };
+
+  const markAllAsRead = () => {
+    const updatedNotifications = notifications.map(n => ({ ...n, read: true }));
+    setNotifications(updatedNotifications);
+    setHasUnread(false);
+    
+    if (user?._id) {
+      localStorage.setItem(`notifications_${user._id}`, JSON.stringify(updatedNotifications));
+    }
+    
+    toast({
+      title: "All notifications marked as read",
+      duration: 2000,
+    });
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+    setHasUnread(false);
+    
+    if (user?._id) {
+      localStorage.removeItem(`notifications_${user._id}`);
+    }
+    
+    toast({
+      title: "All notifications cleared",
+      duration: 2000,
+    });
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case "capsule_unlocked":
+        return Gift;
+      case "capsule_sealed":
+        return Lock;
+      case "milestone":
+        return Sparkles;
+      case "shared":
+        return Users;
+      default:
+        return Bell;
+    }
+  };
+
+  const getNotificationColor = (type: string) => {
+    switch (type) {
+      case "capsule_unlocked":
+        return "bg-green-500/15 text-green-500";
+      case "capsule_sealed":
+        return "bg-blue-500/15 text-blue-500";
+      case "milestone":
+        return "bg-purple-500/15 text-purple-500";
+      case "shared":
+        return "bg-orange-500/15 text-orange-500";
+      default:
+        return "bg-primary/15 text-primary";
+    }
   };
 
   const getInitials = (name: string) => {
@@ -53,57 +242,109 @@ const DashboardHeader = () => {
       <div className="container-narrow">
         <nav className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center gap-2">
+          <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
               <Clock className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="text-lg font-serif font-medium">Time Capsule</span>
-          </div>
+          </Link>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
             <ThemeToggle />
 
             {/* Notifications */}
-            <Popover>
+            <Popover open={showNotifications} onOpenChange={setShowNotifications}>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
                   <Bell className="w-5 h-5" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
+                  {hasUnread && (
+                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-yellow-500 rounded-full animate-pulse shadow-sm" />
+                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-80 p-0">
                 <div className="p-3 border-b border-border">
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold">Notifications</h4>
-                    <span className="text-xs text-primary font-medium bg-primary/10 px-2 py-0.5 rounded-full">4 new</span>
-                  </div>
-                </div>
-                <div className="max-h-72 overflow-y-auto">
-                  {[
-                    { icon: Gift, title: "Capsule Ready to Open!", desc: "Your 'Summer Memories 2024' capsule is now unlocked.", time: "2 min ago", unread: true },
-                    { icon: Users, title: "New Friend Request", desc: "Alex Johnson wants to connect with you.", time: "1 hour ago", unread: true },
-                    { icon: Lock, title: "Capsule Sealed", desc: "'Birthday Wishes' has been sealed until Dec 2025.", time: "3 hours ago", unread: true },
-                    { icon: Sparkles, title: "Memory Milestone!", desc: "You've created 10 capsules. Keep preserving memories!", time: "1 day ago", unread: true },
-                    { icon: Users, title: "Shared Capsule Update", desc: "Maya added a photo to 'Family Reunion 2024'.", time: "2 days ago", unread: false },
-                    { icon: Gift, title: "Capsule Opened", desc: "You opened 'New Year Resolutions'. How did you do?", time: "5 days ago", unread: false },
-                  ].map((n, i) => (
-                    <div key={i} className={`flex gap-3 p-3 hover:bg-muted/50 cursor-pointer transition-colors border-b border-border/50 last:border-0 ${n.unread ? "bg-primary/5" : ""}`}>
-                      <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${n.unread ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-                        <n.icon className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium leading-tight">{n.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.desc}</p>
-                        <p className="text-xs text-muted-foreground/70 mt-1">{n.time}</p>
-                      </div>
-                      {n.unread && <span className="w-2 h-2 rounded-full bg-primary mt-2 shrink-0" />}
+                    <div className="flex gap-2">
+                      {notifications.length > 0 && (
+                        <>
+                          <button
+                            onClick={markAllAsRead}
+                            className="text-xs text-primary hover:underline"
+                          >
+                            Mark all read
+                          </button>
+                          <button
+                            onClick={clearAllNotifications}
+                            className="text-xs text-muted-foreground hover:text-red-400 hover:underline"
+                          >
+                            Clear all
+                          </button>
+                        </>
+                      )}
                     </div>
-                  ))}
+                  </div>
+                  {hasUnread && (
+                    <p className="text-xs text-yellow-500 mt-1">
+                      New notifications available
+                    </p>
+                  )}
                 </div>
-                <div className="p-2 border-t border-border">
-                  <Button variant="ghost" size="sm" className="w-full text-xs text-primary">View all notifications</Button>
+                <div className="max-h-96 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <Bell className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-30" />
+                      <p className="text-sm text-muted-foreground">No notifications yet</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        When capsules unlock, you'll see them here
+                      </p>
+                    </div>
+                  ) : (
+                    notifications.map((notification) => {
+                      const Icon = getNotificationIcon(notification.type);
+                      return (
+                        <div
+                          key={notification.id}
+                          onClick={() => handleNotificationClick(notification)}
+                          className={`flex gap-3 p-3 hover:bg-muted/50 cursor-pointer transition-colors border-b border-border/50 last:border-0 ${
+                            !notification.read ? "bg-primary/5" : ""
+                          }`}
+                        >
+                          <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${getNotificationColor(notification.type)}`}>
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium leading-tight">{notification.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notification.message}</p>
+                            <p className="text-xs text-muted-foreground/70 mt-1">
+                              {format(notification.timestamp, "MMM d, h:mm a")}
+                            </p>
+                          </div>
+                          {!notification.read && (
+                            <span className="w-2 h-2 rounded-full bg-yellow-500 mt-2 shrink-0" />
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
+                {notifications.length > 0 && (
+                  <div className="p-2 border-t border-border">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full text-xs text-primary"
+                      onClick={() => {
+                        setShowNotifications(false);
+                        navigate("/dashboard");
+                      }}
+                    >
+                      View all capsules
+                    </Button>
+                  </div>
+                )}
               </PopoverContent>
             </Popover>
 
@@ -115,19 +356,19 @@ const DashboardHeader = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48 bg-popover">
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
                   <User className="w-4 h-4 mr-2" />
                   Edit Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/privacy")}>
                   <Shield className="w-4 h-4 mr-2" />
                   Privacy
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowNotifications(true)}>
                   <Bell className="w-4 h-4 mr-2" />
                   Notifications
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/help")}>
                   <HelpCircle className="w-4 h-4 mr-2" />
                   Help & Support
                 </DropdownMenuItem>
