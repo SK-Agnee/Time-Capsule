@@ -22,18 +22,6 @@ interface UserData {
   _id: string;
 }
 
-interface Capsule {
-  _id: string;
-  title: string;
-  message: string;
-  unlockDate: string;
-  createdAt: string;
-  image?: string;
-  video?: string;
-  audio?: string;
-  viewed?: boolean;
-}
-
 interface Notification {
   id: string;
   title: string;
@@ -58,12 +46,10 @@ const DashboardHeader = () => {
     }
   }, []);
 
-  // Fetch notifications from localStorage or API
   const fetchNotifications = async () => {
     if (!user?._id) return;
 
     try {
-      // Get notifications from localStorage
       const storedNotifications = localStorage.getItem(`notifications_${user._id}`);
       if (storedNotifications) {
         const parsed = JSON.parse(storedNotifications);
@@ -71,12 +57,10 @@ const DashboardHeader = () => {
         setHasUnread(parsed.some((n: Notification) => !n.read));
       }
 
-      // Check for newly unlocked capsules
       const response = await axios.get(`http://localhost:5000/api/capsules/${user._id}`);
       const capsules = response.data;
       const now = Date.now();
 
-      // Find newly unlocked capsules that haven't been notified
       const storedUnlockedIds = JSON.parse(localStorage.getItem(`unlocked_notified_${user._id}`) || "[]");
       
       const newlyUnlocked = capsules.filter(c => {
@@ -85,7 +69,6 @@ const DashboardHeader = () => {
         return isUnlocked && notNotified && !c.viewed;
       });
 
-      // Create notifications for newly unlocked capsules
       if (newlyUnlocked.length > 0) {
         const newNotifications: Notification[] = newlyUnlocked.map(capsule => ({
           id: Date.now().toString() + Math.random(),
@@ -97,20 +80,16 @@ const DashboardHeader = () => {
           type: "capsule_unlocked"
         }));
 
-        // Update stored notifications
         const existingNotifications = storedNotifications ? JSON.parse(storedNotifications) : [];
         const updatedNotifications = [...newNotifications, ...existingNotifications];
         setNotifications(updatedNotifications);
         setHasUnread(true);
         
-        // Save to localStorage
         localStorage.setItem(`notifications_${user._id}`, JSON.stringify(updatedNotifications));
         
-        // Update unlocked IDs
         const newUnlockedIds = [...storedUnlockedIds, ...newlyUnlocked.map(c => c._id)];
         localStorage.setItem(`unlocked_notified_${user._id}`, JSON.stringify(newUnlockedIds));
         
-        // Show toast for new notifications
         newNotifications.forEach(notification => {
           toast({
             title: notification.title,
@@ -124,17 +103,17 @@ const DashboardHeader = () => {
     }
   };
 
-  // Check for notifications every minute
   useEffect(() => {
     if (user?._id) {
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 60000); // Check every minute
+      const interval = setInterval(fetchNotifications, 60000);
       return () => clearInterval(interval);
     }
   }, [user]);
 
   const handleLogout = () => {
     localStorage.removeItem("capsule_current_user");
+    localStorage.removeItem("token");
     toast({
       title: "Logged out",
       description: "You have been successfully logged out.",
@@ -143,26 +122,21 @@ const DashboardHeader = () => {
   };
 
   const handleNotificationClick = (notification: Notification) => {
-    // Mark as read
     const updatedNotifications = notifications.map(n =>
       n.id === notification.id ? { ...n, read: true } : n
     );
     setNotifications(updatedNotifications);
     setHasUnread(updatedNotifications.some(n => !n.read));
     
-    // Save to localStorage
     if (user?._id) {
       localStorage.setItem(`notifications_${user._id}`, JSON.stringify(updatedNotifications));
     }
     
     setShowNotifications(false);
     
-    // Navigate to dashboard and open the capsule
     if (notification.capsuleId) {
-      // Store the capsule ID to open in session storage
       sessionStorage.setItem("open_capsule_id", notification.capsuleId);
       navigate("/dashboard");
-      // Dispatch event to open the capsule
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent("openCapsule", { detail: { capsuleId: notification.capsuleId } }));
       }, 100);
@@ -241,7 +215,6 @@ const DashboardHeader = () => {
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/30">
       <div className="container-narrow">
         <nav className="flex items-center justify-between h-16">
-          {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
               <Clock className="w-4 h-4 text-primary-foreground" />
@@ -249,11 +222,9 @@ const DashboardHeader = () => {
             <span className="text-lg font-serif font-medium">Time Capsule</span>
           </Link>
 
-          {/* Actions */}
           <div className="flex items-center gap-2">
             <ThemeToggle />
 
-            {/* Notifications */}
             <Popover open={showNotifications} onOpenChange={setShowNotifications}>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative">
@@ -348,7 +319,6 @@ const DashboardHeader = () => {
               </PopoverContent>
             </Popover>
 
-            {/* Settings Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -375,7 +345,6 @@ const DashboardHeader = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Avatar & User Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 rounded-full p-1 hover:bg-accent/50 transition-colors">
@@ -397,6 +366,10 @@ const DashboardHeader = () => {
                   <p className="text-xs text-muted-foreground">{user?.email || ""}</p>
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
+                  <User className="w-4 h-4 mr-2" />
+                  View Profile
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
                   <LogOut className="w-4 h-4 mr-2" />
                   Logout

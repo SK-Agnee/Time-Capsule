@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const Capsule = require("../models/Capsule");
-const fs = require('fs'); // Add this to delete files from uploads folder
-const path = require('path'); // Add this for path handling
+const fs = require('fs');
+const path = require('path');
 
 // multer config
 const multer = require("multer");
@@ -18,38 +18,31 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// CREATE CAPSULE
 router.post("/", upload.fields([
   { name: "image", maxCount: 1 },
   { name: "video", maxCount: 1 },
   { name: "audio", maxCount: 1 },
 ]), async (req, res) => {
   try {
-    const { title, message, unlockDate, userId } = req.body;
+    const { title, message, unlockDate, userId, visibility } = req.body;
 
-    const imagePath = req.files?.image
-      ? req.files.image[0].path
-      : null;
-
-    const videoPath = req.files?.video
-      ? req.files.video[0].path
-      : null;
-
-    const audioPath = req.files?.audio
-      ? req.files.audio[0].path
-      : null;
+    const imagePath = req.files?.image ? req.files.image[0].path : null;
+    const videoPath = req.files?.video ? req.files.video[0].path : null;
+    const audioPath = req.files?.audio ? req.files.audio[0].path : null;
 
     const capsule = new Capsule({
       title,
       message,
       unlockDate,
       userId,
+      visibility: visibility || 'private',
       image: imagePath,
       video: videoPath, 
       audio: audioPath,
     });
 
     await capsule.save();
-
     res.json(capsule);
   } catch (err) {
     console.error(err);
@@ -57,7 +50,7 @@ router.post("/", upload.fields([
   }
 });
 
-// ✅ GET capsules
+// GET capsules
 router.get("/:userId", async (req, res) => {
   try {
     const capsules = await Capsule.find({ userId: req.params.userId });
@@ -67,6 +60,7 @@ router.get("/:userId", async (req, res) => {
   }
 });
 
+// MARK AS VIEWED
 router.put("/view/:id", async (req, res) => {
   try {
     const capsule = await Capsule.findByIdAndUpdate(
@@ -74,14 +68,13 @@ router.put("/view/:id", async (req, res) => {
       { viewed: true },
       { new: true }
     );
-
     res.json(capsule);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ UPDATE capsule - ADD THIS ROUTE
+// UPDATE CAPSULE
 router.put("/:id", upload.fields([
   { name: "image", maxCount: 1 },
   { name: "video", maxCount: 1 },
@@ -91,13 +84,11 @@ router.put("/:id", upload.fields([
     const { title, message, unlockDate } = req.body;
     const capsuleId = req.params.id;
     
-    // Find existing capsule
     const existingCapsule = await Capsule.findById(capsuleId);
     if (!existingCapsule) {
       return res.status(404).json({ error: "Capsule not found" });
     }
     
-    // Check if capsule is already unlocked
     const currentTime = new Date();
     const existingUnlockDate = new Date(existingCapsule.unlockDate);
     
@@ -105,31 +96,30 @@ router.put("/:id", upload.fields([
       return res.status(400).json({ error: "Cannot edit an already unlocked capsule" });
     }
     
-    // Validate new unlock date (must be in future)
     if (unlockDate) {
       const newUnlockDate = new Date(unlockDate);
-      const minAllowed = new Date(Date.now() + 60000); // At least 1 minute in future
+      const minAllowed = new Date(Date.now() + 60000);
       
       if (newUnlockDate <= minAllowed) {
         return res.status(400).json({ error: "Unlock date must be at least 1 minute in the future" });
       }
       
+      if (newUnlockDate <= existingUnlockDate) {
+        return res.status(400).json({ error: "New unlock date must be after the current unlock date" });
+      }
+      
       existingCapsule.unlockDate = newUnlockDate;
     }
     
-    // Update title if provided
     if (title && title.trim()) {
       existingCapsule.title = title;
     }
     
-    // Update message if provided
     if (message !== undefined) {
       existingCapsule.message = message;
     }
     
-    // Handle file updates - delete old files if new ones are uploaded
     if (req.files?.image) {
-      // Delete old image if exists
       if (existingCapsule.image) {
         const oldImagePath = path.join(__dirname, '..', existingCapsule.image);
         if (fs.existsSync(oldImagePath)) {
@@ -168,7 +158,7 @@ router.put("/:id", upload.fields([
   }
 });
 
-// ✅ DELETE capsule - ADD THIS ROUTE
+// DELETE CAPSULE
 router.delete("/:id", async (req, res) => {
   try {
     const capsule = await Capsule.findById(req.params.id);
@@ -177,7 +167,6 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ error: "Capsule not found" });
     }
 
-    // Delete associated files from uploads folder
     if (capsule.image) {
       const imagePath = path.join(__dirname, '..', capsule.image);
       if (fs.existsSync(imagePath)) {
@@ -199,9 +188,7 @@ router.delete("/:id", async (req, res) => {
       }
     }
 
-    // Delete capsule from database
     await Capsule.findByIdAndDelete(req.params.id);
-    
     res.json({ message: "Capsule deleted successfully" });
   } catch (err) {
     console.error(err);

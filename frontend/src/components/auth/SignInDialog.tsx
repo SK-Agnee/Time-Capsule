@@ -26,48 +26,73 @@ const SignInDialog = ({ open, onOpenChange, onSwitchToSignUp }: SignInDialogProp
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  try {
-    const res = await axios.post(
-      'http://localhost:5000/api/auth/login',
-      {
-        email,
-        password
+    if (!email.trim()) {
+      toast({
+        title: "Error",
+        description: "Email is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!password) {
+      toast({
+        title: "Error",
+        description: "Password is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const res = await axios.post(
+        'http://localhost:5000/api/auth/login',
+        {
+          email,
+          password
+        }
+      );
+
+      console.log(res.data);
+
+      // store token
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
       }
-    );
 
-    console.log(res.data);
+      // store user
+      localStorage.setItem(
+        "capsule_current_user",
+        JSON.stringify(res.data.user)
+      );
 
-    // store token
-    localStorage.setItem("token", res.data.token);
+      onOpenChange(false);
+      navigate("/dashboard");
 
-    // store user
-    localStorage.setItem(
-      "capsule_current_user",
-      JSON.stringify(res.data.user)
-    );
+      toast({
+        title: "Welcome back!",
+        description: "Login successful",
+      });
 
-    onOpenChange(false);
-    navigate("/dashboard");
+    } catch (err: any) {
+      console.error(err.response?.data || err.message);
 
-    toast({
-      title: "Welcome back!",
-      description: "Login successful",
-    });
-
-  } catch (err) {
-    console.error(err.response?.data || err.message);
-
-    toast({
-      title: "Login failed",
-      description: "Invalid credentials",
-      variant: "destructive",
-    });
-  }
-};
+      toast({
+        title: "Login failed",
+        description: err.response?.data?.msg || "Invalid credentials",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,6 +117,7 @@ const SignInDialog = ({ open, onOpenChange, onSwitchToSignUp }: SignInDialogProp
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-10 bg-muted/30 border-border/50 focus:border-primary"
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -116,6 +142,7 @@ const SignInDialog = ({ open, onOpenChange, onSwitchToSignUp }: SignInDialogProp
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-10 pr-10 bg-muted/30 border-border/50 focus:border-primary"
+                disabled={isLoading}
               />
               <button
                 type="button"
@@ -128,8 +155,8 @@ const SignInDialog = ({ open, onOpenChange, onSwitchToSignUp }: SignInDialogProp
           </div>
 
           {/* Submit */}
-          <Button type="submit" variant="hero" className="w-full">
-            Sign In
+          <Button type="submit" variant="hero" className="w-full" disabled={isLoading}>
+            {isLoading ? "Signing in..." : "Sign In"}
           </Button>
         </form>
 

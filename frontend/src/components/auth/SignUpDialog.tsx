@@ -26,50 +26,110 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
+  const [username, setUsername] = useState(""); // Add username field
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  try {
-    const res = await axios.post(
-      'http://localhost:5000/api/auth/signup',
-      {
-        name,
-        email,
-        password
+    // Validation
+    if (!name.trim()) {
+      toast({
+        title: "Error",
+        description: "Full name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!username.trim()) {
+      toast({
+        title: "Error",
+        description: "Username is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!email.trim()) {
+      toast({
+        title: "Error",
+        description: "Email is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!password) {
+      toast({
+        title: "Error",
+        description: "Password is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!agreedToTerms) {
+      toast({
+        title: "Error",
+        description: "Please agree to the terms",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Change from /signup to /register
+      const res = await axios.post(
+        'http://localhost:5000/api/auth/register',
+        {
+          name,
+          username, // Add username
+          email,
+          password
+        }
+      );
+
+      console.log(res.data);
+
+      // Store token and user data
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
       }
-    );
+      localStorage.setItem(
+        "capsule_current_user",
+        JSON.stringify(res.data.user)
+      );
 
-    console.log(res.data);
+      onOpenChange(false);
+      navigate("/dashboard");
 
-    localStorage.setItem(
-      "capsule_current_user",
-      JSON.stringify(res.data.user)
-    );
+      toast({
+        title: "Account created!",
+        description: "Welcome to Time Capsule.",
+      });
 
-    onOpenChange(false);
-    navigate("/dashboard");
+    } catch (err: any) {
+      console.error(err.response?.data || err.message);
 
-    toast({
-      title: "Account created!",
-      description: "Welcome to Time Capsule.",
-    });
-
-  } catch (err) {
-    console.error(err.response?.data || err.message);
-
-    toast({
-      title: "Signup failed",
-      description: "Something went wrong",
-      variant: "destructive",
-    });
-  }
-};
-    
-    
+      toast({
+        title: "Signup failed",
+        description: err.response?.data?.msg || err.response?.data?.error || "Something went wrong",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -82,7 +142,7 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          {/* Name */}
+          {/* Full Name */}
           <div className="space-y-2">
             <Label htmlFor="signup-name">Full Name</Label>
             <div className="relative">
@@ -93,6 +153,22 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
                 placeholder="John Doe"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                className="pl-10 bg-muted/30 border-border/50 focus:border-primary"
+              />
+            </div>
+          </div>
+
+          {/* Username - ADD THIS FIELD */}
+          <div className="space-y-2">
+            <Label htmlFor="signup-username">Username</Label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="signup-username"
+                type="text"
+                placeholder="johndoe"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 className="pl-10 bg-muted/30 border-border/50 focus:border-primary"
               />
             </div>
@@ -136,7 +212,7 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
               </button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Must be at least 8 characters
+              Must be at least 6 characters
             </p>
           </div>
 

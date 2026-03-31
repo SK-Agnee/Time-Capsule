@@ -1,7 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
 import axios from "axios";
-import CreateCapsule from "@/components/dashboard/CreateCapsule";
-import MyCapsules from "@/components/dashboard/MyCapsules";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import Footer from "@/components/Footer";
@@ -18,18 +16,40 @@ interface Capsule {
   viewed?: boolean;
 }
 
+interface User {
+  _id: string;
+  name: string;
+  username: string;
+  email: string;
+}
+
 const Dashboard = () => {
   const [capsules, setCapsules] = useState<Capsule[]>([]);
-  const [userName, setUserName] = useState("User");
+  const [user, setUser] = useState<User | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   
+  // Load user from localStorage once on mount
+  useEffect(() => {
+    const loadUser = () => {
+      const storedUser = localStorage.getItem("capsule_current_user");
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+        } catch (e) {
+          console.error("Error parsing user:", e);
+        }
+      }
+    };
+    loadUser();
+  }, []);
+
   const fetchCapsules = useCallback(async () => {
+    if (!user?._id) return;
+    
     try {
       setIsLoading(true);
-      const user = JSON.parse(localStorage.getItem("capsule_current_user") || "{}");
-      if (!user?._id) return;
-
       const res = await axios.get(
         `http://localhost:5000/api/capsules/${user._id}`
       );
@@ -53,29 +73,23 @@ const Dashboard = () => {
       
       setCapsules(sortedCapsules);
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching capsules:", err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user?._id]);
 
-  // Refresh function to be passed to child components
-  const handleDataChange = useCallback(async () => {
-    await fetchCapsules();
+  const handleDataChange = useCallback(() => {
+    fetchCapsules();
     setRefreshKey(prev => prev + 1);
   }, [fetchCapsules]);
 
   useEffect(() => {
-    const currentUser = localStorage.getItem("capsule_current_user");
-    if (currentUser) {
-      const user = JSON.parse(currentUser);
-      setUserName(user.name || "User");
+    if (user?._id) {
+      fetchCapsules();
     }
+  }, [user?._id, fetchCapsules]);
 
-    fetchCapsules();
-  }, [fetchCapsules]);
-
-  // Listen for capsule events
   useEffect(() => {
     const handleCapsuleChange = () => {
       fetchCapsules();
@@ -85,18 +99,37 @@ const Dashboard = () => {
     window.addEventListener('capsuleCreated', handleCapsuleChange);
     window.addEventListener('capsuleUpdated', handleCapsuleChange);
     window.addEventListener('capsuleDeleted', handleCapsuleChange);
-    window.addEventListener('capsuleViewed', handleCapsuleChange); // Add this line
+    window.addEventListener('capsuleViewed', handleCapsuleChange);
     
     return () => {
       window.removeEventListener('capsuleUnlocked', handleCapsuleChange);
       window.removeEventListener('capsuleCreated', handleCapsuleChange);
       window.removeEventListener('capsuleUpdated', handleCapsuleChange);
       window.removeEventListener('capsuleDeleted', handleCapsuleChange);
-      window.removeEventListener('capsuleViewed', handleCapsuleChange); // Add this line
+      window.removeEventListener('capsuleViewed', handleCapsuleChange);
     };
   }, [fetchCapsules]);
 
-  // Calculate actual counts - these will update whenever capsules changes
+  useEffect(() => {
+  const handleUserUpdate = (event: CustomEvent) => {
+    if (event.detail?.user) {
+      const currentStoredUser = localStorage.getItem("capsule_current_user");
+      if (currentStoredUser) {
+        const parsedUser = JSON.parse(currentStoredUser);
+        // Only update if it's the same user
+        if (parsedUser._id === event.detail.user._id) {
+          setUser(event.detail.user);
+        }
+      }
+    }
+  };
+
+  window.addEventListener('userUpdated', handleUserUpdate as EventListener);
+  return () => {
+    window.removeEventListener('userUpdated', handleUserUpdate as EventListener);
+  };
+}, []);
+
   const now = new Date();
   const upcomingCapsules = capsules.filter(
     (c) => new Date(c.unlockDate).getTime() > now.getTime()
@@ -127,10 +160,9 @@ const Dashboard = () => {
       <DashboardHeader />
       
       <main className="container-narrow py-8">
-        {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-serif text-foreground mb-2">
-            Welcome back, <span className="text-gradient">{userName}</span>
+            Welcome back, <span className="text-gradient">{user?.name || "User"}</span>
           </h1>
           <p className="text-muted-foreground">
             You have <span className="text-primary font-medium">{upcomingCapsules.length}</span> capsule{upcomingCapsules.length !== 1 ? 's' : ''} waiting to be opened and{" "}
@@ -138,7 +170,6 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Dashboard Content */}
         <DashboardTabs
           key={refreshKey}
           capsules={capsules}
