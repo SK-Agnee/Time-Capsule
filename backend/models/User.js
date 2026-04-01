@@ -1,42 +1,51 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-<<<<<<< Updated upstream
 const UserSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  username: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
-  bio: { type: String, default: '' },
-  profilePicture: { type: String, default: '' },
-  friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  createdAt: { type: Date, default: Date.now }
-});
-=======
-const userSchema = new mongoose.Schema({
-    name: {
-        type: String,
-        required: true
-    },
-    email: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    password: {
+  name: {
     type: String,
-    required: false // 🔥 important for Google/GitHub users
-    },
+    required: true
+  },
 
-    provider: {
-        type: String,
-        enum: ["local", "google", "github"],
-        default: "local"
-    },
+  username: {
+    type: String,
+    unique: true
+  },
 
-    providerId: {
-        type: String
-    }
+  email: {
+    type: String,
+    required: true,
+    unique: true
+  },
+
+  password: {
+    type: String,
+    required: false // for OAuth users
+  },
+
+  provider: {
+    type: String,
+    enum: ["local", "google", "github"],
+    default: "local"
+  },
+
+  providerId: {
+    type: String
+  },
+
+  bio: {
+    type: String,
+    default: ""
+  },
+
+  profilePicture: {
+    type: String,
+    default: ""
+  },
+
+  friends: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+  ]
+
 }, { timestamps: true });
->>>>>>> Stashed changes
 
-module.exports = mongoose.model('User', UserSchema);
+module.exports = mongoose.model("User", UserSchema);
