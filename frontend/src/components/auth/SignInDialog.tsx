@@ -169,7 +169,14 @@ const SignInDialog = ({ open, onOpenChange, onSwitchToSignUp }: SignInDialogProp
 
         {/* Social Login */}
         <div className="grid grid-cols-2 gap-3">
-          <Button variant="outline" type="button" className="w-full">
+          <Button
+            variant="outline"
+            type="button"
+            className="w-full"
+            onClick={() => {
+              window.location.href = "http://localhost:5000/api/auth/google";
+            }}
+          >
             <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
               <path
                 fill="currentColor"

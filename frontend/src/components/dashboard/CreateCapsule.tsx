@@ -171,9 +171,12 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
       console.log(res.data);
       alert("Capsule Created Successfully!");
       
+<<<<<<< Updated upstream
       // Dispatch event to notify dashboard
       window.dispatchEvent(new CustomEvent('capsuleCreated'));
       
+=======
+>>>>>>> Stashed changes
       // Reset form
       setTitle("");
       setMessage("");

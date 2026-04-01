@@ -85,6 +85,7 @@ const Dashboard = () => {
   }, [fetchCapsules]);
 
   useEffect(() => {
+<<<<<<< Updated upstream
     if (user?._id) {
       fetchCapsules();
     }
@@ -129,6 +130,32 @@ const Dashboard = () => {
     window.removeEventListener('userUpdated', handleUserUpdate as EventListener);
   };
 }, []);
+=======
+    // ✅ STEP 1: Get user from Google redirect URL
+    const params = new URLSearchParams(window.location.search);
+    const userData = params.get("user");
+
+    if (userData) {
+      const user = JSON.parse(decodeURIComponent(userData));
+
+      // ✅ Save user in localStorage
+      localStorage.setItem("capsule_current_user", JSON.stringify(user));
+
+      // ✅ Clean URL
+      window.history.replaceState({}, document.title, "/dashboard");
+    }
+
+    // ✅ STEP 2: Load user from localStorage
+    const currentUser = localStorage.getItem("capsule_current_user");
+    if (currentUser) {
+      const user = JSON.parse(currentUser);
+      setUserName(user.name || "User");
+    }
+
+    // ✅ STEP 3: Fetch capsules
+    fetchCapsules();
+  }, []);
+>>>>>>> Stashed changes
 
   const now = new Date();
   const upcomingCapsules = capsules.filter(

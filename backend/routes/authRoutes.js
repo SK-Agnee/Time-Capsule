@@ -1,3 +1,4 @@
+const passport = require("passport");
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
@@ -89,5 +90,44 @@ router.post('/login', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+// 🔥 GOOGLE LOGIN
+router.get(
+  "/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
 
+// 🔥 GOOGLE CALLBACK
+router.get(
+  "/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: "/",
+  }),
+  (req, res) => {
+    res.redirect(
+    `http://localhost:8080/dashboard?user=${encodeURIComponent(JSON.stringify({
+        _id: req.user._id,
+        name: req.user.name,
+        email: req.user.email
+    }))}`
+    );
+  }
+);
+// 🔥 GITHUB LOGIN
+router.get(
+  "/github",
+  passport.authenticate("github", { scope: ["user:email"] })
+);
+
+// 🔥 GITHUB CALLBACK
+router.get(
+  "/github/callback",
+  passport.authenticate("github", {
+    failureRedirect: "/",
+  }),
+  (req, res) => {
+    res.redirect(
+      `http://localhost:8080/dashboard?userId=${req.user._id}&name=${req.user.name}`
+    );
+  }
+);
 module.exports = router;

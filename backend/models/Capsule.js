@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 const mongoose = require('mongoose');
 
 const CapsuleSchema = new mongoose.Schema({
@@ -11,6 +12,33 @@ const CapsuleSchema = new mongoose.Schema({
   audio: { type: String, default: null },
   viewed: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
+=======
+const mongoose = require("mongoose");
+
+const capsuleSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true,
+  },
+  message: String,
+  unlockDate: Date,
+  userId: String,
+
+  // ✅ NEW FIELD
+  image: String,
+  video: String,
+  audio: String,
+
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+
+  viewed: {
+    type: Boolean,
+    default: false,
+  }
+>>>>>>> Stashed changes
 });
 
 module.exports = mongoose.model('Capsule', CapsuleSchema);

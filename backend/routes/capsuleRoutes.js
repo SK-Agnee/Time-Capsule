@@ -1,8 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const Capsule = require("../models/Capsule");
+<<<<<<< Updated upstream
 const fs = require('fs');
 const path = require('path');
+=======
+const fs = require('fs'); // Add this to delete files from uploads folder
+const path = require('path'); // Add this for path handling
+>>>>>>> Stashed changes
 
 // multer config
 const multer = require("multer");
@@ -18,7 +23,10 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+<<<<<<< Updated upstream
 // CREATE CAPSULE
+=======
+>>>>>>> Stashed changes
 router.post("/", upload.fields([
   { name: "image", maxCount: 1 },
   { name: "video", maxCount: 1 },
@@ -50,7 +58,11 @@ router.post("/", upload.fields([
   }
 });
 
+<<<<<<< Updated upstream
 // GET capsules
+=======
+// ✅ GET capsules
+>>>>>>> Stashed changes
 router.get("/:userId", async (req, res) => {
   try {
     const capsules = await Capsule.find({ userId: req.params.userId });
@@ -74,6 +86,7 @@ router.put("/view/:id", async (req, res) => {
   }
 });
 
+<<<<<<< Updated upstream
 // UPDATE CAPSULE
 router.put("/:id", upload.fields([
   { name: "image", maxCount: 1 },
@@ -159,6 +172,9 @@ router.put("/:id", upload.fields([
 });
 
 // DELETE CAPSULE
+=======
+// ✅ DELETE capsule - ADD THIS ROUTE
+>>>>>>> Stashed changes
 router.delete("/:id", async (req, res) => {
   try {
     const capsule = await Capsule.findById(req.params.id);
@@ -167,6 +183,10 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ error: "Capsule not found" });
     }
 
+<<<<<<< Updated upstream
+=======
+    // Delete associated files from uploads folder
+>>>>>>> Stashed changes
     if (capsule.image) {
       const imagePath = path.join(__dirname, '..', capsule.image);
       if (fs.existsSync(imagePath)) {
@@ -188,7 +208,13 @@ router.delete("/:id", async (req, res) => {
       }
     }
 
+<<<<<<< Updated upstream
     await Capsule.findByIdAndDelete(req.params.id);
+=======
+    // Delete capsule from database
+    await Capsule.findByIdAndDelete(req.params.id);
+    
+>>>>>>> Stashed changes
     res.json({ message: "Capsule deleted successfully" });
   } catch (err) {
     console.error(err);
