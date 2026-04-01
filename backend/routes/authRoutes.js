@@ -1,6 +1,6 @@
-const passport = require("passport");
 const express = require('express');
 const router = express.Router();
+const passport = require("passport");
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -10,7 +10,6 @@ router.post('/register', async (req, res) => {
     try {
         const { name, username, email, password } = req.body;
 
-        // Check if user exists by email OR username
         const existingUser = await User.findOne({ 
             $or: [{ email }, { username }] 
         });
@@ -90,10 +89,14 @@ router.post('/login', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
 // 🔥 GOOGLE LOGIN
 router.get(
   "/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    prompt: "select_account",
+  })
 );
 
 // 🔥 GOOGLE CALLBACK
@@ -104,14 +107,15 @@ router.get(
   }),
   (req, res) => {
     res.redirect(
-    `http://localhost:8080/dashboard?user=${encodeURIComponent(JSON.stringify({
+      `http://localhost:8080/dashboard?user=${encodeURIComponent(JSON.stringify({
         _id: req.user._id,
         name: req.user.name,
         email: req.user.email
-    }))}`
+      }))}`
     );
   }
 );
+
 // 🔥 GITHUB LOGIN
 router.get(
   "/github",
@@ -130,4 +134,5 @@ router.get(
     );
   }
 );
+
 module.exports = router;

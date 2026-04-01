@@ -29,21 +29,6 @@ const Dashboard = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Load user from localStorage once on mount
-  useEffect(() => {
-    const loadUser = () => {
-      const storedUser = localStorage.getItem("capsule_current_user");
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
-        } catch (e) {
-          console.error("Error parsing user:", e);
-        }
-      }
-    };
-    loadUser();
-  }, []);
 
   const fetchCapsules = useCallback(async () => {
     if (!user?._id) return;
@@ -85,11 +70,30 @@ const Dashboard = () => {
   }, [fetchCapsules]);
 
   useEffect(() => {
-<<<<<<< Updated upstream
-    if (user?._id) {
-      fetchCapsules();
+  // STEP 1: Handle Google OAuth redirect
+  const params = new URLSearchParams(window.location.search);
+  const userData = params.get("user");
+
+  if (userData) {
+    const parsedUser = JSON.parse(decodeURIComponent(userData));
+
+    localStorage.setItem("capsule_current_user", JSON.stringify(parsedUser));
+    setUser(parsedUser);
+
+    window.history.replaceState({}, document.title, "/dashboard");
+  } else {
+    const storedUser = localStorage.getItem("capsule_current_user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
     }
-  }, [user?._id, fetchCapsules]);
+  }
+}, []);
+
+useEffect(() => {
+  if (user?._id) {
+    fetchCapsules();
+  }
+}, [user?._id, fetchCapsules]);
 
   useEffect(() => {
     const handleCapsuleChange = () => {
@@ -130,32 +134,6 @@ const Dashboard = () => {
     window.removeEventListener('userUpdated', handleUserUpdate as EventListener);
   };
 }, []);
-=======
-    // ✅ STEP 1: Get user from Google redirect URL
-    const params = new URLSearchParams(window.location.search);
-    const userData = params.get("user");
-
-    if (userData) {
-      const user = JSON.parse(decodeURIComponent(userData));
-
-      // ✅ Save user in localStorage
-      localStorage.setItem("capsule_current_user", JSON.stringify(user));
-
-      // ✅ Clean URL
-      window.history.replaceState({}, document.title, "/dashboard");
-    }
-
-    // ✅ STEP 2: Load user from localStorage
-    const currentUser = localStorage.getItem("capsule_current_user");
-    if (currentUser) {
-      const user = JSON.parse(currentUser);
-      setUserName(user.name || "User");
-    }
-
-    // ✅ STEP 3: Fetch capsules
-    fetchCapsules();
-  }, []);
->>>>>>> Stashed changes
 
   const now = new Date();
   const upcomingCapsules = capsules.filter(
