@@ -1,8 +1,8 @@
+console.log("CLIENT ID:", process.env.GOOGLE_CLIENT_ID);
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
-const GitHubStrategy = require("passport-github2").Strategy;
 const User = require("../models/User");
-
+const GitHubStrategy = require("passport-github2").Strategy;
 // GOOGLE STRATEGY
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,

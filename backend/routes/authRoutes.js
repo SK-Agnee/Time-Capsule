@@ -125,14 +125,14 @@ router.get(
 // 🔥 GITHUB CALLBACK
 router.get(
   "/github/callback",
-  passport.authenticate("github", {
-    failureRedirect: "/",
-  }),
+  passport.authenticate("github", { session: false }),
   (req, res) => {
+    const user = req.user;
+
     res.redirect(
-      `http://localhost:8080/dashboard?userId=${req.user._id}&name=${req.user.name}`
+      `http://localhost:8080/dashboard?user=${encodeURIComponent(
+        JSON.stringify(user)
+      )}`
     );
   }
-);
-
 module.exports = router;
