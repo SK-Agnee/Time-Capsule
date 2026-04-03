@@ -1,5 +1,4 @@
 import { Clock, Lock, Unlock, Diamond, Trash2, Edit2, Calendar as CalendarIcon, ChevronDown, Check, ArrowUp, ArrowDown } from "lucide-react";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -25,12 +24,10 @@ type Capsule = {
   viewed?: boolean;
 };
 
-
 type SortField = "unlockDate" | "createdAt";
 type SortOrder = "asc" | "desc";
 
 const getStatusStyles = (status: string) => {
-
   switch (status) {
     case "locked":
       return "bg-capsule-locked border-border/30";
@@ -57,16 +54,26 @@ const getStatusIcon = (status: string) => {
 };
 
 const getCountdown = (diff: number) => {
-
   if (diff <= 0) return "Unlocked";
-
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-
   return `${days}d ${hours}h left`;
 };
 
-// Sort Dropdown Component with simple up/down arrows
+// Calculate time-based progress (0% at creation, 100% at unlock)
+const getTimeProgress = (createdAt: string, unlockDate: string) => {
+  const created = new Date(createdAt).getTime();
+  const unlock = new Date(unlockDate).getTime();
+  const now = Date.now();
+  
+  if (now >= unlock) return 100;
+  const totalDuration = unlock - created;
+  const elapsed = now - created;
+  const percentage = (elapsed / totalDuration) * 100;
+  return Math.max(0, Math.min(100, percentage));
+};
+
+// Sort Dropdown Component
 const SortDropdown = ({ field, order, onFieldChange, onOrderChange }: {
   field: SortField;
   order: SortOrder;
@@ -170,7 +177,6 @@ const MyCapsules = ({
   openCapsuleId?: string | null,
   onCapsuleOpened?: () => void
 }) => {
-
   const [time, setTime] = useState(Date.now());
   const [selectedCapsule, setSelectedCapsule] = useState<Capsule | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -222,12 +228,10 @@ const MyCapsules = ({
   }, [initialCapsules]);
 
   // Timer for countdown updates
-
   useEffect(() => {
     const interval = setInterval(() => {
       setTime(Date.now());
     }, 1000);
-
     return () => clearInterval(interval);
   }, []);
 
@@ -278,31 +282,22 @@ const MyCapsules = ({
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-
-    
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this capsule?"
-    );
-
+    const confirmDelete = window.confirm("Are you sure you want to delete this capsule?");
     if (!confirmDelete) return;
 
     try {
       await axios.delete(`http://localhost:5000/api/capsules/${id}`);
-      
       window.dispatchEvent(new CustomEvent('capsuleDeleted'));
       await fetchCapsules();
       
-
       if (selectedCapsule?._id === id) {
         setShowModal(false);
         setSelectedCapsule(null);
       }
       
-
       if (onCapsuleDeleted) {
         onCapsuleDeleted();
       }
-      
     } catch (err) {
       console.error(err);
       alert("Error deleting capsule");
@@ -323,7 +318,6 @@ const MyCapsules = ({
 
   const handleUpdate = async () => {
     if (!editingCapsule) return;
-
     if (!editTitle.trim()) {
       alert("Title is required");
       return;
@@ -345,7 +339,6 @@ const MyCapsules = ({
     if (isSameDateTime) {
       setEditLoading(true);
       setDateError("");
-      
       try {
         const formData = new FormData();
         formData.append("title", editTitle);
@@ -353,9 +346,7 @@ const MyCapsules = ({
         formData.append("unlockDate", finalDate.toISOString());
 
         await axios.put(`http://localhost:5000/api/capsules/${editingCapsule._id}`, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+          headers: { "Content-Type": "multipart/form-data" },
         });
 
         alert("Capsule updated successfully!");
@@ -392,9 +383,7 @@ const MyCapsules = ({
       formData.append("unlockDate", finalDate.toISOString());
 
       await axios.put(`http://localhost:5000/api/capsules/${editingCapsule._id}`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       alert("Capsule updated successfully!");
@@ -412,7 +401,6 @@ const MyCapsules = ({
 
   const isDateDisabled = (date: Date) => {
     if (!editingCapsule) return true;
-    
     const currentUnlockDate = new Date(editingCapsule.unlockDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -421,21 +409,14 @@ const MyCapsules = ({
     const currentDateStart = new Date(currentUnlockDate);
     currentDateStart.setHours(0, 0, 0, 0);
     
-    if (dateToCheck.getTime() === currentDateStart.getTime()) {
-      return false;
-    }
-    if (dateToCheck.getTime() < today.getTime()) {
-      return true;
-    }
-    if (dateToCheck.getTime() < currentDateStart.getTime()) {
-      return true;
-    }
+    if (dateToCheck.getTime() === currentDateStart.getTime()) return false;
+    if (dateToCheck.getTime() < today.getTime()) return true;
+    if (dateToCheck.getTime() < currentDateStart.getTime()) return true;
     return false;
   };
 
   const isTimeValid = (selectedDate: Date | undefined, timeStr: string, currentUnlockDate: Date) => {
     if (!selectedDate) return true;
-    
     const [hours, minutes] = timeStr.split(":");
     const newDateTime = new Date(selectedDate);
     newDateTime.setHours(Number(hours));
@@ -445,24 +426,17 @@ const MyCapsules = ({
     const now = new Date();
     const minAllowed = new Date(now.getTime() + 60000);
     
-    if (newDateTime.getTime() === currentDateTime.getTime()) {
-      return true;
-    }
+    if (newDateTime.getTime() === currentDateTime.getTime()) return true;
     if (newDateTime.toDateString() === currentDateTime.toDateString()) {
-      if (newDateTime.getTime() <= currentDateTime.getTime()) {
-        return false;
-      }
+      if (newDateTime.getTime() <= currentDateTime.getTime()) return false;
     }
-    if (newDateTime.getTime() <= minAllowed.getTime()) {
-      return false;
-    }
+    if (newDateTime.getTime() <= minAllowed.getTime()) return false;
     return true;
   };
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = e.target.value;
     setEditUnlockTime(newTime);
-    
     if (editUnlockDate && editingCapsule) {
       const currentUnlockDate = new Date(editingCapsule.unlockDate);
       const isValid = isTimeValid(editUnlockDate, newTime, currentUnlockDate);
@@ -484,7 +458,6 @@ const MyCapsules = ({
       </div>
     );
   }
-
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -513,20 +486,11 @@ const MyCapsules = ({
                 const createdYear = new Date(c.createdAt).getFullYear();
                 const unlockDate = c.unlockDate ? new Date(c.unlockDate) : new Date();
                 const unlockYear = unlockDate.getFullYear();
-
-                const status =
-                  unlockDate.getTime() > time
-                    ? "locked"
-                    : "opened";
-
+                const status = unlockDate.getTime() > time ? "locked" : "opened";
                 const countdown = getCountdown(unlockDate.getTime() - time);
-                const totalYears = Math.max(1, unlockYear - createdYear);
-                const currentYear = new Date().getFullYear();
-                const yearsElapsed = Math.min(currentYear - createdYear, totalYears);
-                const progress = Math.max(
-                    0,
-                    Math.min(100, (yearsElapsed / totalYears) * 100)
-                );
+                
+                // Calculate time-based progress
+                const progress = getTimeProgress(c.createdAt, c.unlockDate);
 
                 return (
                   <div
@@ -534,12 +498,9 @@ const MyCapsules = ({
                     onClick={async () => {
                       setSelectedCapsule(c);
                       setShowModal(true);
-
                       const isUnlocked = new Date(c.unlockDate).getTime() <= Date.now();
-
                       if (isUnlocked && !c.viewed) {
                         await axios.put(`http://localhost:5000/api/capsules/view/${c._id}`);
-                        // Dispatch event to notify dashboard that a capsule was viewed
                         window.dispatchEvent(new CustomEvent('capsuleViewed'));
                         await fetchCapsules();
                       }
@@ -555,33 +516,20 @@ const MyCapsules = ({
 
                         <div className="flex items-center gap-2">
                           {status === "locked" && (
-                            <button
-                              onClick={(e) => handleEdit(c, e)}
-                              className="text-blue-400 hover:text-blue-300 transition-colors p-1"
-                              title="Edit capsule"
-                            >
+                            <button onClick={(e) => handleEdit(c, e)} className="text-blue-400 hover:text-blue-300 transition-colors p-1" title="Edit capsule">
                               <Edit2 className="w-4 h-4" />
                             </button>
                           )}
-                          <button
-                            onClick={(e) => handleDelete(c._id, e)}
-                            className="text-red-400 hover:text-red-300 transition-colors p-1"
-                            title="Delete capsule"
-                          >
+                          <button onClick={(e) => handleDelete(c._id, e)} className="text-red-400 hover:text-red-300 transition-colors p-1" title="Delete capsule">
                             <Trash2 className="w-4 h-4" />
                           </button>
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full font-medium ${
-                              status === "opened"
-                                ? "bg-green-500/20 text-green-400 shadow-sm"
-                                : "bg-yellow-500/20 text-yellow-400"
-                            }`}
-                          >
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                            status === "opened" ? "bg-green-500/20 text-green-400 shadow-sm" : "bg-yellow-500/20 text-yellow-400"
+                          }`}>
                             {status === "opened" ? "🎉 Unlocked" : "🔒 Locked"}
                           </span>
                         </div>
                       </div>
-
 
                       <p className="text-sm mt-1 text-muted-foreground">
                         {unlockDate.getTime() > time
@@ -595,11 +543,11 @@ const MyCapsules = ({
                       </div>
 
                       {status === "locked" && (
-                        <p className="text-xs text-primary mt-1">
-                          {countdown}
-                        </p>
+                        <p className="text-xs text-primary mt-1">{countdown}</p>
                       )}
                     </div>
+                    
+                    {/* Time-based Progress Bar - Fills as time passes */}
                     <Progress value={progress} className="h-1.5" />
                   </div>
                 );
@@ -614,7 +562,6 @@ const MyCapsules = ({
                 <span>{upcomingCapsules.length} capsule{upcomingCapsules.length !== 1 ? 's' : ''} remaining</span>
               </div>
               <span>{new Date().getFullYear()}</span>
-
             </div>
           )}
         </CardContent>
@@ -636,9 +583,7 @@ const MyCapsules = ({
         </CardHeader>
         <CardContent className="space-y-4">
           {unlockedCapsules.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No unlocked capsules yet
-            </p>
+            <p className="text-sm text-muted-foreground text-center py-4">No unlocked capsules yet</p>
           ) : (
             unlockedCapsules.map((c) => (
               <div
@@ -647,31 +592,18 @@ const MyCapsules = ({
                   setSelectedCapsule(c);
                   setShowModal(true);
                 }}
-
                 className="p-4 rounded-lg bg-muted/30 border border-border/30 cursor-pointer hover:border-primary/50 group transition-all"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {c.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Created: {format(new Date(c.createdAt), "MMM d, yyyy")}
-                    </p>
+                    <p className="text-sm font-medium text-foreground">{c.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Created: {format(new Date(c.createdAt), "MMM d, yyyy")}</p>
                   </div>
-
-                  <button
-                    onClick={(e) => handleDelete(c._id, e)}
-                    className="text-red-400 hover:text-red-300 transition-colors p-1 opacity-0 group-hover:opacity-100"
-                    title="Delete capsule"
-                  >
+                  <button onClick={(e) => handleDelete(c._id, e)} className="text-red-400 hover:text-red-300 transition-colors p-1 opacity-0 group-hover:opacity-100" title="Delete capsule">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Unlocked on {format(new Date(c.unlockDate), "MMM d, yyyy")}
-
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">Unlocked on {format(new Date(c.unlockDate), "MMM d, yyyy")}</p>
               </div>
             ))
           )}
@@ -681,84 +613,27 @@ const MyCapsules = ({
       {/* View Modal */}
       {selectedCapsule && showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-          <div
-            className={`bg-card p-6 rounded-xl max-w-md w-full relative transform transition-all duration-300 scale-100 opacity-100 max-h-[90vh] overflow-y-auto`}
-            onClick={(e) => e.stopPropagation()}
-          >
-
-            <button
-              className="absolute top-2 right-3 text-lg hover:text-red-400 transition-colors"
-              onClick={() => {
-                setShowModal(false);
-                setTimeout(() => setSelectedCapsule(null), 200);
-              }}
-            >
-              ✖
-            </button>
-
-            <h2 className="text-xl font-semibold mb-2 pr-6">
-              {selectedCapsule.title}
-            </h2>
-
+          <div className="bg-card p-6 rounded-xl max-w-md w-full relative transform transition-all duration-300 scale-100 opacity-100 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <button className="absolute top-2 right-3 text-lg hover:text-red-400 transition-colors" onClick={() => { setShowModal(false); setTimeout(() => setSelectedCapsule(null), 200); }}>✖</button>
+            <h2 className="text-xl font-semibold mb-2 pr-6">{selectedCapsule.title}</h2>
             <p className="text-sm text-muted-foreground mb-4">
               {new Date(selectedCapsule.unlockDate).getTime() > Date.now() 
                 ? `Unlocks on ${new Date(selectedCapsule.unlockDate).toLocaleString()}`
-                : `Unlocked on ${new Date(selectedCapsule.unlockDate).toLocaleString()}`
-              }
+                : `Unlocked on ${new Date(selectedCapsule.unlockDate).toLocaleString()}`}
             </p>
-
             <div className="bg-muted p-4 rounded-md space-y-3">
               {new Date(selectedCapsule.unlockDate).getTime() > Date.now() ? (
                 <div className="text-center py-4">
                   <Lock className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
                   <p className="text-muted-foreground">🔒 This capsule is still locked</p>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Check back on {new Date(selectedCapsule.unlockDate).toLocaleDateString()}
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">Check back on {new Date(selectedCapsule.unlockDate).toLocaleDateString()}</p>
                 </div>
               ) : (
                 <>
-                  <div className="whitespace-pre-wrap">
-                    <p className="font-medium mb-2">Message:</p>
-                    <p className="text-muted-foreground">{selectedCapsule.message}</p>
-                  </div>
-
-                  {selectedCapsule.image && (
-                    <div>
-                      <p className="font-medium mb-2">Image:</p>
-                      <img
-                        src={`http://localhost:5000/${selectedCapsule.image}`}
-                        alt="capsule"
-                        className="rounded-lg max-h-60 w-full object-cover"
-                      />
-                    </div>
-                  )}
-                  {selectedCapsule.video && (
-                    <div>
-                      <p className="font-medium mb-2">Video:</p>
-                      <video
-                        controls
-                        className="rounded-lg max-h-60 w-full"
-                      >
-                        <source
-                          src={`http://localhost:5000/${selectedCapsule.video}`}
-                          type="video/mp4"
-                        />
-                      </video>
-                    </div>
-                  )}
-                  {selectedCapsule.audio && (
-                    <div>
-                      <p className="font-medium mb-2">Audio:</p>
-                      <audio controls className="w-full">
-                        <source
-                          src={`http://localhost:5000/${selectedCapsule.audio}`}
-                          type="audio/mpeg"
-                        />
-                      </audio>
-                    </div>
-
-                  )}
+                  <div className="whitespace-pre-wrap"><p className="font-medium mb-2">Message:</p><p className="text-muted-foreground">{selectedCapsule.message}</p></div>
+                  {selectedCapsule.image && (<div><p className="font-medium mb-2">Image:</p><img src={`http://localhost:5000/${selectedCapsule.image}`} alt="capsule" className="rounded-lg max-h-60 w-full object-cover" /></div>)}
+                  {selectedCapsule.video && (<div><p className="font-medium mb-2">Video:</p><video controls className="rounded-lg max-h-60 w-full"><source src={`http://localhost:5000/${selectedCapsule.video}`} type="video/mp4" /></video></div>)}
+                  {selectedCapsule.audio && (<div><p className="font-medium mb-2">Audio:</p><audio controls className="w-full"><source src={`http://localhost:5000/${selectedCapsule.audio}`} type="audio/mpeg" /></audio></div>)}
                 </>
               )}
             </div>
@@ -769,130 +644,34 @@ const MyCapsules = ({
       {/* Edit Modal */}
       {showEditModal && editingCapsule && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowEditModal(false)}>
-          <div 
-            className="bg-card p-6 rounded-xl max-w-md w-full relative max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="absolute top-2 right-3 text-lg hover:text-red-400 transition-colors"
-              onClick={() => {
-                setShowEditModal(false);
-                setEditingCapsule(null);
-              }}
-            >
-              ✖
-            </button>
-
+          <div className="bg-card p-6 rounded-xl max-w-md w-full relative max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <button className="absolute top-2 right-3 text-lg hover:text-red-400 transition-colors" onClick={() => { setShowEditModal(false); setEditingCapsule(null); }}>✖</button>
             <h2 className="text-xl font-semibold mb-4">Edit Time Capsule</h2>
-
             <div className="space-y-2 mb-4">
-              <Label htmlFor="edit-title" className="text-sm text-muted-foreground">
-                Capsule Title
-              </Label>
-              <Input
-                id="edit-title"
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                placeholder="Name your time capsule..."
-                className="bg-muted/30 border-border/50 focus:border-primary"
-              />
+              <Label htmlFor="edit-title" className="text-sm text-muted-foreground">Capsule Title</Label>
+              <Input id="edit-title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Name your time capsule..." className="bg-muted/30 border-border/50 focus:border-primary" />
             </div>
-
             <div className="space-y-2 mb-4">
-              <Label htmlFor="edit-message" className="text-sm text-muted-foreground">
-                Your Message
-              </Label>
-              <Textarea
-                id="edit-message"
-                value={editMessage}
-                onChange={(e) => setEditMessage(e.target.value)}
-                placeholder="Write a message to your future self..."
-                className="bg-muted/30 border-border/50 focus:border-primary min-h-[100px]"
-              />
+              <Label htmlFor="edit-message" className="text-sm text-muted-foreground">Your Message</Label>
+              <Textarea id="edit-message" value={editMessage} onChange={(e) => setEditMessage(e.target.value)} placeholder="Write a message to your future self..." className="bg-muted/30 border-border/50 focus:border-primary min-h-[100px]" />
             </div>
-
             <div className="space-y-2 mb-4">
-              <Label className="text-sm text-muted-foreground flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4" />
-                Set Release Date & Time
-              </Label>
+              <Label className="text-sm text-muted-foreground flex items-center gap-2"><CalendarIcon className="w-4 h-4" />Set Release Date & Time</Label>
               <div className="grid grid-cols-2 gap-3">
                 <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal bg-muted/30 border-border/50 hover:border-primary",
-                        !editUnlockDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {editUnlockDate ? format(editUnlockDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={editUnlockDate}
-                      onSelect={setEditUnlockDate}
-                      disabled={isDateDisabled}
-                      initialFocus
-                    />
-                  </PopoverContent>
+                  <PopoverTrigger asChild><Button variant="outline" className={cn("w-full justify-start text-left font-normal bg-muted/30 border-border/50 hover:border-primary", !editUnlockDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{editUnlockDate ? format(editUnlockDate, "PPP") : <span>Pick a date</span>}</Button></PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={editUnlockDate} onSelect={setEditUnlockDate} disabled={isDateDisabled} initialFocus /></PopoverContent>
                 </Popover>
-                <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="time"
-                    value={editUnlockTime}
-                    onChange={handleTimeChange}
-                    className="pl-10 bg-muted/30 border-border/50 focus:border-primary"
-                  />
-                </div>
+                <div className="relative"><Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="time" value={editUnlockTime} onChange={handleTimeChange} className="pl-10 bg-muted/30 border-border/50 focus:border-primary" /></div>
               </div>
-              
-              <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-md">
-                <p className="text-xs text-muted-foreground">
-                  Current unlock date:
-                </p>
-                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                  {format(new Date(editingCapsule.unlockDate), "MMM d, yyyy 'at' h:mm a")}
-                </p>
-              </div>
-              
-              <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
-                <p className="text-xs font-medium text-yellow-600 dark:text-yellow-400 mb-2">
-                  ⚠️ Update Rules:
-                </p>
-                <ul className="text-xs text-muted-foreground space-y-1">
-                  <li>✓ You can keep the same date and time (no change)</li>
-                  <li>• To move forward, new date must be at least 1 minute in the future</li>
-                  <li>• New unlock date must be AFTER the current date if changed</li>
-                  <li className="text-green-600 dark:text-green-400">✓ Example: Current date Mar 27 12:00 → You can keep same or select Mar 27 12:01 or later</li>
-                </ul>
-              </div>
-              
-              {dateError && (
-                <p className="text-xs text-red-500 mt-2 p-2 bg-red-500/10 rounded-md border border-red-500/20">
-                  ❌ {dateError}
-                </p>
-              )}
+              <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-md"><p className="text-xs text-muted-foreground">Current unlock date:</p><p className="text-sm font-medium text-blue-600 dark:text-blue-400">{format(new Date(editingCapsule.unlockDate), "MMM d, yyyy 'at' h:mm a")}</p></div>
+              <div className="mt-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md"><p className="text-xs font-medium text-yellow-600 dark:text-yellow-400 mb-2">⚠️ Update Rules:</p><ul className="text-xs text-muted-foreground space-y-1"><li>✓ You can keep the same date and time (no change)</li><li>• To move forward, new date must be at least 1 minute in the future</li><li>• New unlock date must be AFTER the current date if changed</li><li className="text-green-600 dark:text-green-400">✓ Example: Current date Mar 27 12:00 → You can keep same or select Mar 27 12:01 or later</li></ul></div>
+              {dateError && (<p className="text-xs text-red-500 mt-2 p-2 bg-red-500/10 rounded-md border border-red-500/20">❌ {dateError}</p>)}
             </div>
-
-            <Button
-              variant="hero"
-              size="lg"
-              className="w-full"
-              onClick={handleUpdate}
-              disabled={editLoading}
-            >
-              <Lock className="w-4 h-4 mr-2" />
-              {editLoading ? "Updating..." : "Update Time Capsule"}
-            </Button>
+            <Button variant="hero" size="lg" className="w-full" onClick={handleUpdate} disabled={editLoading}><Lock className="w-4 h-4 mr-2" />{editLoading ? "Updating..." : "Update Time Capsule"}</Button>
           </div>
         </div>
       )}
-
     </div>
   );
 };
