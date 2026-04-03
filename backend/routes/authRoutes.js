@@ -100,19 +100,26 @@ router.get(
 );
 
 // 🔥 GOOGLE CALLBACK
+// 🔥 GOOGLE CALLBACK - FIXED
 router.get(
   "/google/callback",
-  passport.authenticate("google", {
-    failureRedirect: "/",
-  }),
+  passport.authenticate("google", { failureRedirect: "/" }),
   (req, res) => {
-    res.redirect(
-      `http://localhost:8080/dashboard?user=${encodeURIComponent(JSON.stringify({
-        _id: req.user._id,
-        name: req.user.name,
-        email: req.user.email
-      }))}`
+    const token = jwt.sign(
+      { id: req.user._id },
+      process.env.JWT_SECRET || "secretkey",
+      { expiresIn: "1d" }
     );
+
+    // Pass user data as JSON
+    const userData = {
+      _id: req.user._id,
+      name: req.user.name,
+      username: req.user.username,
+      email: req.user.email
+    };
+
+    res.redirect(`http://localhost:8080/oauth-success?token=${token}&user=${encodeURIComponent(JSON.stringify(userData))}`);
   }
 );
 
@@ -122,17 +129,52 @@ router.get(
   passport.authenticate("github", { scope: ["user:email"] })
 );
 
-// 🔥 GITHUB CALLBACK
+
+// 🔥 GITHUB CALLBACK - FIXED
 router.get(
   "/github/callback",
   passport.authenticate("github", { session: false }),
   (req, res) => {
-    const user = req.user;
+    if (!req.user) {
+      return res.redirect("http://localhost:8080/login?error=authentication_failed");
+    }
 
-    res.redirect(
-      `http://localhost:8080/dashboard?user=${encodeURIComponent(
-        JSON.stringify(user)
-      )}`
+    const token = jwt.sign(
+      { id: req.user._id },
+      process.env.JWT_SECRET || "secretkey",
+      { expiresIn: "1d" }
     );
+
+    // Pass user data as JSON
+    const userData = {
+      _id: req.user._id,
+      name: req.user.name,
+      username: req.user.username,
+      email: req.user.email
+    };
+
+    res.redirect(`http://localhost:8080/oauth-success?token=${token}&user=${encodeURIComponent(JSON.stringify(userData))}`);
   }
+);
+// ✅ GET CURRENT USER
+router.get("/me", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ msg: "No token provided" });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secretkey");
+
+    const user = await User.findById(decoded.id).select("-password");
+
+    res.json(user);
+  } catch (err) {
+    console.error(err);
+    res.status(401).json({ msg: "Unauthorized" });
+  }
+});
 module.exports = router;

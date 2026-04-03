@@ -12,6 +12,7 @@ import About from "./pages/About";
 import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import OAuthSuccess from "./pages/OAuthSuccess";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/oauth-success" element={<OAuthSuccess />} />
             <Route
               path="/dashboard"
               element={

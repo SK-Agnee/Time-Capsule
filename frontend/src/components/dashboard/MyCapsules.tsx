@@ -1,8 +1,5 @@
-<<<<<<< Updated upstream
 import { Clock, Lock, Unlock, Diamond, Trash2, Edit2, Calendar as CalendarIcon, ChevronDown, Check, ArrowUp, ArrowDown } from "lucide-react";
-=======
-import { Clock, Lock, Unlock, Diamond, Trash2 } from "lucide-react";
->>>>>>> Stashed changes
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -28,14 +25,12 @@ type Capsule = {
   viewed?: boolean;
 };
 
-<<<<<<< Updated upstream
+
 type SortField = "unlockDate" | "createdAt";
 type SortOrder = "asc" | "desc";
 
 const getStatusStyles = (status: string) => {
-=======
-const getStatusStyles = (status) => {
->>>>>>> Stashed changes
+
   switch (status) {
     case "locked":
       return "bg-capsule-locked border-border/30";
@@ -61,11 +56,8 @@ const getStatusIcon = (status: string) => {
   }
 };
 
-<<<<<<< Updated upstream
 const getCountdown = (diff: number) => {
-=======
-const getCountdown = (diff) => {
->>>>>>> Stashed changes
+
   if (diff <= 0) return "Unlocked";
 
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -74,7 +66,6 @@ const getCountdown = (diff) => {
   return `${days}d ${hours}h left`;
 };
 
-<<<<<<< Updated upstream
 // Sort Dropdown Component with simple up/down arrows
 const SortDropdown = ({ field, order, onFieldChange, onOrderChange }: {
   field: SortField;
@@ -179,13 +170,10 @@ const MyCapsules = ({
   openCapsuleId?: string | null,
   onCapsuleOpened?: () => void
 }) => {
-=======
-const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCapsuleDeleted?: () => void }) => {
->>>>>>> Stashed changes
+
   const [time, setTime] = useState(Date.now());
   const [selectedCapsule, setSelectedCapsule] = useState<Capsule | null>(null);
   const [showModal, setShowModal] = useState(false);
-<<<<<<< Updated upstream
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCapsule, setEditingCapsule] = useState<Capsule | null>(null);
   const [localCapsules, setLocalCapsules] = useState<Capsule[]>(initialCapsules);
@@ -234,14 +222,7 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
   }, [initialCapsules]);
 
   // Timer for countdown updates
-=======
-  const [localCapsules, setLocalCapsules] = useState<Capsule[]>(capsules);
-  
-  useEffect(() => {
-    setLocalCapsules(capsules);
-  }, [capsules]);
 
->>>>>>> Stashed changes
   useEffect(() => {
     const interval = setInterval(() => {
       setTime(Date.now());
@@ -250,7 +231,6 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
     return () => clearInterval(interval);
   }, []);
 
-<<<<<<< Updated upstream
   // Open capsule when openCapsuleId is set
   useEffect(() => {
     if (openCapsuleId && localCapsules.length > 0) {
@@ -298,20 +278,7 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-=======
-  const upcomingCapsules = localCapsules.filter(
-    (c) =>
-      new Date(c.unlockDate).getTime() > time || !c.viewed
-  );
 
-  const unlockedCapsules = localCapsules.filter(
-    (c) =>
-      new Date(c.unlockDate).getTime() <= time && c.viewed
-  );
-
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // prevents opening modal
->>>>>>> Stashed changes
     
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this capsule?"
@@ -322,25 +289,16 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
     try {
       await axios.delete(`http://localhost:5000/api/capsules/${id}`);
       
-<<<<<<< Updated upstream
       window.dispatchEvent(new CustomEvent('capsuleDeleted'));
       await fetchCapsules();
       
-=======
-      // Update local state to remove deleted capsule
-      setLocalCapsules(prev => prev.filter(c => c._id !== id));
-      
-      // Close modal if the deleted capsule was open
->>>>>>> Stashed changes
+
       if (selectedCapsule?._id === id) {
         setShowModal(false);
         setSelectedCapsule(null);
       }
       
-<<<<<<< Updated upstream
-=======
-      // Call the callback if provided
->>>>>>> Stashed changes
+
       if (onCapsuleDeleted) {
         onCapsuleDeleted();
       }
@@ -351,7 +309,6 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
     }
   };
 
-<<<<<<< Updated upstream
   const handleEdit = (c: Capsule, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingCapsule(c);
@@ -528,8 +485,7 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
     );
   }
 
-=======
->>>>>>> Stashed changes
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Capsules List */}
@@ -581,7 +537,6 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
 
                       const isUnlocked = new Date(c.unlockDate).getTime() <= Date.now();
 
-<<<<<<< Updated upstream
                       if (isUnlocked && !c.viewed) {
                         await axios.put(`http://localhost:5000/api/capsules/view/${c._id}`);
                         // Dispatch event to notify dashboard that a capsule was viewed
@@ -626,47 +581,7 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
                           </span>
                         </div>
                       </div>
-=======
-                    if (isUnlocked && !c.viewed) {
-                      await axios.put(`http://localhost:5000/api/capsules/view/${c._id}`);
-                      // Update local state to mark as viewed
-                      setLocalCapsules(prev => prev.map(capsule => 
-                        capsule._id === c._id ? { ...capsule, viewed: true } : capsule
-                      ));
-                    }
-                  }}
-                  className={`p-4 rounded-lg border transition-all hover:border-primary/50 cursor-pointer ${getStatusStyles(status)}`}
-                >
-                  <div className="mb-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {getStatusIcon(status)}
-                        <span className="font-medium text-foreground">{c.title}</span>
-                      </div>
 
-                      <div className="flex items-center gap-2">
-                        {/* DELETE BUTTON */}
-                        <button
-                          onClick={(e) => handleDelete(c._id, e)}
-                          className="text-red-400 hover:text-red-300 transition-colors p-1"
-                          title="Delete capsule"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-
-                        {/* UNLOCK BADGE */}
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            status === "opened"
-                              ? "bg-green-500/20 text-green-400 shadow-sm"
-                              : "bg-yellow-500/20 text-yellow-400"
-                          }`}
-                        >
-                          {status === "opened" ? "🎉 Unlocked" : "🔒 Locked"}
-                        </span>
-                      </div>
-                    </div>
->>>>>>> Stashed changes
 
                       <p className="text-sm mt-1 text-muted-foreground">
                         {unlockDate.getTime() > time
@@ -692,7 +607,6 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
             )}
           </div>
 
-<<<<<<< Updated upstream
           {upcomingCapsules.length > 0 && (
             <div className="mt-6 flex items-center justify-between text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
@@ -700,13 +614,7 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
                 <span>{upcomingCapsules.length} capsule{upcomingCapsules.length !== 1 ? 's' : ''} remaining</span>
               </div>
               <span>{new Date().getFullYear()}</span>
-=======
-          {/* Progress indicator */}
-          <div className="mt-6 flex items-center justify-between text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Diamond className="w-4 h-4 text-primary" />
-              <span>{upcomingCapsules.length} of {localCapsules.length}</span>
->>>>>>> Stashed changes
+
             </div>
           )}
         </CardContent>
@@ -739,7 +647,7 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
                   setSelectedCapsule(c);
                   setShowModal(true);
                 }}
-<<<<<<< Updated upstream
+
                 className="p-4 rounded-lg bg-muted/30 border border-border/30 cursor-pointer hover:border-primary/50 group transition-all"
               >
                 <div className="flex items-center justify-between">
@@ -751,16 +659,7 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
                       Created: {format(new Date(c.createdAt), "MMM d, yyyy")}
                     </p>
                   </div>
-=======
-                className="p-4 rounded-lg bg-muted/30 border border-border/30 cursor-pointer hover:border-primary/50 group"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-foreground">
-                    {c.title}
-                  </p>
-                  
-                  {/* DELETE BUTTON */}
->>>>>>> Stashed changes
+
                   <button
                     onClick={(e) => handleDelete(c._id, e)}
                     className="text-red-400 hover:text-red-300 transition-colors p-1 opacity-0 group-hover:opacity-100"
@@ -769,14 +668,9 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-<<<<<<< Updated upstream
                 <p className="text-xs text-muted-foreground mt-1">
                   Unlocked on {format(new Date(c.unlockDate), "MMM d, yyyy")}
-=======
 
-                <p className="text-xs text-muted-foreground mt-1">
-                  Click to view
->>>>>>> Stashed changes
                 </p>
               </div>
             ))
@@ -784,7 +678,6 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
         </CardContent>
       </Card>
       
-<<<<<<< Updated upstream
       {/* View Modal */}
       {selectedCapsule && showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
@@ -792,16 +685,7 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
             className={`bg-card p-6 rounded-xl max-w-md w-full relative transform transition-all duration-300 scale-100 opacity-100 max-h-[90vh] overflow-y-auto`}
             onClick={(e) => e.stopPropagation()}
           >
-=======
-      {selectedCapsule && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div
-            className={`bg-card p-6 rounded-xl max-w-md w-full relative transform transition-all duration-300 ${
-              showModal ? "scale-100 opacity-100" : "scale-90 opacity-0"
-            }`}
-          >
-            {/* Close Button */}
->>>>>>> Stashed changes
+
             <button
               className="absolute top-2 right-3 text-lg hover:text-red-400 transition-colors"
               onClick={() => {
@@ -812,7 +696,6 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
               ✖
             </button>
 
-<<<<<<< Updated upstream
             <h2 className="text-xl font-semibold mb-2 pr-6">
               {selectedCapsule.title}
             </h2>
@@ -874,54 +757,7 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
                         />
                       </audio>
                     </div>
-=======
-            {/* Title */}
-            <h2 className="text-xl font-semibold mb-2">
-              {selectedCapsule.title}
-            </h2>
 
-            {/* Unlock Info */}
-            <p className="text-sm text-muted-foreground mb-4">
-              Unlocks on{" "}
-              {new Date(selectedCapsule.unlockDate).toDateString()}
-            </p>
-
-            {/* Message */}
-            <div className="bg-muted p-4 rounded-md space-y-3">
-              {new Date(selectedCapsule.unlockDate).getTime() > Date.now() ? (
-                "🔒 This capsule is still locked"
-              ) : (
-                <>
-                  {/* Message */}
-                  <p>{selectedCapsule.message}</p>
-
-                  {/* Image */}
-                  {selectedCapsule.image && (
-                    <img
-                      src={`http://localhost:5000/${selectedCapsule.image}`}
-                      alt="capsule"
-                      className="rounded-lg max-h-60 w-full object-cover"
-                    />
-                  )}
-                  {selectedCapsule.video && (
-                    <video
-                      controls
-                      className="rounded-lg max-h-60 w-full"
-                    >
-                      <source
-                        src={`http://localhost:5000/${selectedCapsule.video}`}
-                        type="video/mp4"
-                      />
-                    </video>
-                  )}
-                  {selectedCapsule.audio && (
-                    <audio controls className="w-full">
-                      <source
-                        src={`http://localhost:5000/${selectedCapsule.audio}`}
-                        type="audio/mpeg"
-                      />
-                    </audio>
->>>>>>> Stashed changes
                   )}
                 </>
               )}
@@ -929,7 +765,6 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
           </div>
         </div>
       )}
-<<<<<<< Updated upstream
 
       {/* Edit Modal */}
       {showEditModal && editingCapsule && (
@@ -1057,8 +892,7 @@ const MyCapsules = ({ capsules, onCapsuleDeleted }: { capsules: Capsule[], onCap
           </div>
         </div>
       )}
-=======
->>>>>>> Stashed changes
+
     </div>
   );
 };
