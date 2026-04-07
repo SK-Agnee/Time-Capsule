@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,13 +6,13 @@
 
 @layer base {
   :root {
-    --background: 40 30% 96%;
+    --background: 0 0% 100%; /* Changed to pure white */
     --foreground: 222 30% 15%;
 
-    --card: 40 25% 92%;
+    --card: 0 0% 100%; /* Changed to pure white */
     --card-foreground: 222 30% 15%;
 
-    --popover: 40 25% 92%;
+    --popover: 0 0% 100%; /* Changed to pure white */
     --popover-foreground: 222 30% 15%;
 
     --primary: 35 85% 45%;
@@ -22,8 +21,8 @@
     --secondary: 15 60% 55%;
     --secondary-foreground: 40 30% 98%;
 
-    --muted: 40 20% 88%;
-    --muted-foreground: 220 15% 40%;
+    --muted: 40 20% 96%; /* Lighter muted for better contrast on white */
+    --muted-foreground: 220 15% 45%;
 
     --accent: 25 70% 50%;
     --accent-foreground: 40 30% 98%;
@@ -31,8 +30,8 @@
     --destructive: 0 62.8% 40%;
     --destructive-foreground: 40 30% 98%;
 
-    --border: 40 20% 82%;
-    --input: 40 20% 82%;
+    --border: 40 20% 90%; /* Lighter border for white background */
+    --input: 40 20% 90%;
     --ring: 35 85% 45%;
 
     --radius: 0.75rem;
@@ -41,28 +40,28 @@
     --glow-amber: 35 85% 45%;
     --glow-rose: 15 60% 55%;
     --glow-peach: 25 70% 50%;
-    --capsule-locked: 40 20% 85%;
-    --capsule-unlocking: 35 40% 80%;
-    --capsule-opened: 25 50% 75%;
+    --capsule-locked: 40 20% 96%;
+    --capsule-unlocking: 35 40% 95%;
+    --capsule-opened: 25 50% 92%;
     
     /* Gradients */
-    --gradient-glow: linear-gradient(135deg, hsl(35 85% 45% / 0.2), hsl(15 60% 55% / 0.1));
-    --gradient-card: linear-gradient(180deg, hsl(40 25% 94%), hsl(40 25% 90%));
-    --gradient-hero: radial-gradient(ellipse at 50% 0%, hsl(35 85% 45% / 0.15) 0%, transparent 60%);
+    --gradient-glow: linear-gradient(135deg, hsl(35 85% 45% / 0.1), hsl(15 60% 55% / 0.05));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(40 20% 98%));
+    --gradient-hero: radial-gradient(ellipse at 50% 0%, hsl(35 85% 45% / 0.08) 0%, transparent 60%);
     
     /* Shadows */
-    --shadow-glow-sm: 0 0 20px hsl(35 85% 45% / 0.15);
-    --shadow-glow-md: 0 0 40px hsl(35 85% 45% / 0.2);
-    --shadow-glow-lg: 0 0 80px hsl(35 85% 45% / 0.25);
-    --shadow-soft: 0 4px 20px hsl(40 30% 50% / 0.15);
+    --shadow-glow-sm: 0 0 20px hsl(35 85% 45% / 0.1);
+    --shadow-glow-md: 0 0 40px hsl(35 85% 45% / 0.12);
+    --shadow-glow-lg: 0 0 80px hsl(35 85% 45% / 0.15);
+    --shadow-soft: 0 4px 20px hsl(40 30% 50% / 0.08);
 
-    --sidebar-background: 40 30% 96%;
+    --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 30% 15%;
     --sidebar-primary: 35 85% 45%;
     --sidebar-primary-foreground: 40 30% 98%;
-    --sidebar-accent: 40 20% 88%;
+    --sidebar-accent: 40 20% 96%;
     --sidebar-accent-foreground: 222 30% 15%;
-    --sidebar-border: 40 20% 82%;
+    --sidebar-border: 40 20% 90%;
     --sidebar-ring: 35 85% 45%;
   }
 
@@ -281,7 +280,6 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
 }
-
 
 /* Progress bar custom styling */
 [data-radix-progress-indicator] {

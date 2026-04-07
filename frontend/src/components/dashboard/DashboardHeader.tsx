@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Clock, Bell, Settings, LogOut, User, Shield, HelpCircle, ChevronDown, Gift, Users, Lock, Sparkles } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -38,6 +38,8 @@ const DashboardHeader = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [hasUnread, setHasUnread] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastCheckRef = useRef<number>(Date.now());
 
   useEffect(() => {
     const currentUser = localStorage.getItem("capsule_current_user");
@@ -46,17 +48,10 @@ const DashboardHeader = () => {
     }
   }, []);
 
-  const fetchNotifications = async () => {
-    if (!user?._id) return;
+  const checkForNewlyUnlockedCapsules = async () => {
+    if (!user?._id) return false;
 
     try {
-      const storedNotifications = localStorage.getItem(`notifications_${user._id}`);
-      if (storedNotifications) {
-        const parsed = JSON.parse(storedNotifications);
-        setNotifications(parsed);
-        setHasUnread(parsed.some((n: Notification) => !n.read));
-      }
-
       const response = await axios.get(`http://localhost:5000/api/capsules/${user._id}`);
       const capsules = response.data;
       const now = Date.now();
@@ -70,8 +65,11 @@ const DashboardHeader = () => {
       });
 
       if (newlyUnlocked.length > 0) {
+        const storedNotifications = localStorage.getItem(`notifications_${user._id}`);
+        const existingNotifications = storedNotifications ? JSON.parse(storedNotifications) : [];
+        
         const newNotifications: Notification[] = newlyUnlocked.map(capsule => ({
-          id: Date.now().toString() + Math.random(),
+          id: Date.now().toString() + Math.random() + capsule._id,
           title: "🎉 Capsule Unlocked!",
           message: `"${capsule.title}" is now ready to open`,
           capsuleId: capsule._id,
@@ -80,7 +78,6 @@ const DashboardHeader = () => {
           type: "capsule_unlocked"
         }));
 
-        const existingNotifications = storedNotifications ? JSON.parse(storedNotifications) : [];
         const updatedNotifications = [...newNotifications, ...existingNotifications];
         setNotifications(updatedNotifications);
         setHasUnread(true);
@@ -90,6 +87,7 @@ const DashboardHeader = () => {
         const newUnlockedIds = [...storedUnlockedIds, ...newlyUnlocked.map(c => c._id)];
         localStorage.setItem(`unlocked_notified_${user._id}`, JSON.stringify(newUnlockedIds));
         
+        // Show toast for each new notification
         newNotifications.forEach(notification => {
           toast({
             title: notification.title,
@@ -97,18 +95,106 @@ const DashboardHeader = () => {
             duration: 5000,
           });
         });
+
+        // Dispatch custom event for other components
+        window.dispatchEvent(new CustomEvent("newNotifications", { 
+          detail: { count: newNotifications.length } 
+        }));
+        
+        return true;
       }
+    } catch (err) {
+      console.error("Error checking for unlocked capsules:", err);
+    }
+    return false;
+  };
+
+  const fetchNotifications = async () => {
+    if (!user?._id) return;
+
+    try {
+      const storedNotifications = localStorage.getItem(`notifications_${user._id}`);
+      if (storedNotifications) {
+        const parsed = JSON.parse(storedNotifications);
+        setNotifications(parsed);
+        setHasUnread(parsed.some((n: Notification) => !n.read));
+      }
+
+      await checkForNewlyUnlockedCapsules();
+      lastCheckRef.current = Date.now();
     } catch (err) {
       console.error("Error fetching notifications:", err);
     }
   };
 
+  // Set up real-time checking
   useEffect(() => {
     if (user?._id) {
+      // Initial fetch
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 60000);
-      return () => clearInterval(interval);
+      
+      // Check every 10 seconds instead of 60 for more real-time feel
+      intervalRef.current = setInterval(fetchNotifications, 10000);
+      
+      // Set up event listener for capsule creation/updates
+      const handleCapsuleCreated = () => {
+        console.log("Capsule created event received, checking for updates...");
+        setTimeout(() => fetchNotifications(), 500);
+      };
+      
+      const handleCapsuleUnlocked = () => {
+        console.log("Capsule unlocked event received, checking for updates...");
+        setTimeout(() => fetchNotifications(), 100);
+      };
+      
+      const handleFocus = () => {
+        console.log("Window focused, checking for updates...");
+        fetchNotifications();
+      };
+      
+      // Listen for custom events from other components
+      window.addEventListener("capsuleCreated", handleCapsuleCreated);
+      window.addEventListener("capsuleUnlocked", handleCapsuleUnlocked);
+      window.addEventListener("focus", handleFocus);
+      
+      // Also listen for storage events (for multi-tab support)
+      const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === `unlocked_notified_${user._id}` || e.key === `notifications_${user._id}`) {
+          console.log("Storage changed in another tab, refreshing notifications...");
+          fetchNotifications();
+        }
+      };
+      
+      window.addEventListener("storage", handleStorageChange);
+      
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+        window.removeEventListener("capsuleCreated", handleCapsuleCreated);
+        window.removeEventListener("capsuleUnlocked", handleCapsuleUnlocked);
+        window.removeEventListener("focus", handleFocus);
+        window.removeEventListener("storage", handleStorageChange);
+      };
     }
+  }, [user]);
+
+  // Set up a WebSocket-like polling with visibility API
+  useEffect(() => {
+    if (!user?._id) return;
+    
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log("Tab became visible, checking for updates...");
+        fetchNotifications();
+      }
+    };
+    
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [user]);
 
   const handleLogout = () => {
@@ -211,6 +297,15 @@ const DashboardHeader = () => {
       .slice(0, 2);
   };
 
+  // Manual refresh function
+  const handleManualRefresh = () => {
+    fetchNotifications();
+    toast({
+      title: "Checking for updates...",
+      duration: 1500,
+    });
+  };
+
   return (
     <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/30">
       <div className="container-narrow">
@@ -227,7 +322,7 @@ const DashboardHeader = () => {
 
             <Popover open={showNotifications} onOpenChange={setShowNotifications}>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
+                <Button variant="ghost" size="icon" className="relative" onClick={handleManualRefresh}>
                   <Bell className="w-5 h-5" />
                   {hasUnread && (
                     <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-yellow-500 rounded-full animate-pulse shadow-sm" />
@@ -290,7 +385,7 @@ const DashboardHeader = () => {
                             <p className="text-sm font-medium leading-tight">{notification.title}</p>
                             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notification.message}</p>
                             <p className="text-xs text-muted-foreground/70 mt-1">
-                              {format(notification.timestamp, "MMM d, h:mm a")}
+                              {format(new Date(notification.timestamp), "MMM d, h:mm a")}
                             </p>
                           </div>
                           {!notification.read && (
