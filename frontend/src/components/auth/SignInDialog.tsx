@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import axios from 'axios';
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
@@ -27,11 +27,45 @@ const SignInDialog = ({ open, onOpenChange, onSwitchToSignUp }: SignInDialogProp
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Refs to read DOM values directly for autofill support
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  // Handle autofill detection when dialog opens
+  useEffect(() => {
+    if (!open) return;
+    
+    // Check for autofilled values after a short delay
+    const timer = setTimeout(() => {
+      if (emailRef.current && emailRef.current.value && !email) {
+        setEmail(emailRef.current.value);
+      }
+      if (passwordRef.current && passwordRef.current.value && !password) {
+        setPassword(passwordRef.current.value);
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [open, email, password]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Get final values from state or DOM (for autofill)
+    let finalEmail = email;
+    let finalPassword = password;
+    
+    if (emailRef.current && !finalEmail) {
+      finalEmail = emailRef.current.value;
+      setEmail(finalEmail);
+    }
+    if (passwordRef.current && !finalPassword) {
+      finalPassword = passwordRef.current.value;
+      setPassword(finalPassword);
+    }
 
-    if (!email.trim()) {
+    if (!finalEmail.trim()) {
       toast({
         title: "Error",
         description: "Email is required",
@@ -40,7 +74,7 @@ const SignInDialog = ({ open, onOpenChange, onSwitchToSignUp }: SignInDialogProp
       return;
     }
 
-    if (!password) {
+    if (!finalPassword) {
       toast({
         title: "Error",
         description: "Password is required",
@@ -55,8 +89,8 @@ const SignInDialog = ({ open, onOpenChange, onSwitchToSignUp }: SignInDialogProp
       const res = await axios.post(
         'http://localhost:5000/api/auth/login',
         {
-          email,
-          password
+          email: finalEmail,
+          password: finalPassword
         }
       );
 
@@ -111,11 +145,15 @@ const SignInDialog = ({ open, onOpenChange, onSwitchToSignUp }: SignInDialogProp
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                ref={emailRef}
                 id="signin-email"
                 type="email"
+                name="email"
+                autoComplete="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={(e) => e.target.value && setEmail(e.target.value)}
                 className="pl-10 bg-muted/30 border-border/50 focus:border-primary"
                 disabled={isLoading}
               />
@@ -136,11 +174,15 @@ const SignInDialog = ({ open, onOpenChange, onSwitchToSignUp }: SignInDialogProp
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                ref={passwordRef}
                 id="signin-password"
                 type={showPassword ? "text" : "password"}
+                name="password"
+                autoComplete="current-password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onBlur={(e) => e.target.value && setPassword(e.target.value)}
                 className="pl-10 pr-10 bg-muted/30 border-border/50 focus:border-primary"
                 disabled={isLoading}
               />

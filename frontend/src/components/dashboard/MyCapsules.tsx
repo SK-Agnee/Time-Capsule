@@ -60,12 +60,10 @@ const getCountdown = (diff: number) => {
   return `${days}d ${hours}h left`;
 };
 
-// Calculate time-based progress (0% at creation, 100% at unlock)
 const getTimeProgress = (createdAt: string, unlockDate: string) => {
   const created = new Date(createdAt).getTime();
   const unlock = new Date(unlockDate).getTime();
   const now = Date.now();
-  
   if (now >= unlock) return 100;
   const totalDuration = unlock - created;
   const elapsed = now - created;
@@ -73,7 +71,6 @@ const getTimeProgress = (createdAt: string, unlockDate: string) => {
   return Math.max(0, Math.min(100, percentage));
 };
 
-// Sort Dropdown Component
 const SortDropdown = ({ field, order, onFieldChange, onOrderChange }: {
   field: SortField;
   order: SortOrder;
@@ -93,68 +90,31 @@ const SortDropdown = ({ field, order, onFieldChange, onOrderChange }: {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const getFieldLabel = (f: SortField) => {
-    return f === "unlockDate" ? "Unlock Date" : "Created Date";
-  };
+  const getFieldLabel = (f: SortField) => f === "unlockDate" ? "Unlock Date" : "Created Date";
 
-  const handleFieldSelect = (newField: SortField) => {
-    onFieldChange(newField);
-  };
-
-  const toggleOrder = () => {
-    onOrderChange(order === "asc" ? "desc" : "asc");
-  };
+  const handleFieldSelect = (newField: SortField) => onFieldChange(newField);
+  const toggleOrder = () => onOrderChange(order === "asc" ? "desc" : "asc");
 
   return (
     <div className="relative sort-dropdown" ref={dropdownRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 text-sm bg-muted/30 hover:bg-muted/50 rounded-lg border border-border/50 transition-all"
-      >
+      <button onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-2 px-3 py-1.5 text-sm bg-muted/30 hover:bg-muted/50 rounded-lg border border-border/50 transition-all">
         <span className="text-muted-foreground">Sort by:</span>
         <span className="font-medium text-foreground">{getFieldLabel(field)}</span>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleOrder();
-          }}
-          className="p-0.5 hover:bg-muted/50 rounded-md transition-colors"
-        >
-          {order === "asc" ? (
-            <ArrowUp className="w-4 h-4 text-primary" />
-          ) : (
-            <ArrowDown className="w-4 h-4 text-primary" />
-          )}
+        <button onClick={(e) => { e.stopPropagation(); toggleOrder(); }} className="p-0.5 hover:bg-muted/50 rounded-md transition-colors">
+          {order === "asc" ? <ArrowUp className="w-4 h-4 text-primary" /> : <ArrowDown className="w-4 h-4 text-primary" />}
         </button>
         <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
-
       {isOpen && (
         <div className="absolute right-0 mt-2 w-48 bg-popover rounded-lg shadow-lg border border-border z-50 overflow-hidden">
           <div className="p-2">
             <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">Sort By</p>
             <div className="space-y-1">
-              <button
-                onClick={() => handleFieldSelect("unlockDate")}
-                className={cn(
-                  "w-full flex items-center justify-between px-2 py-1.5 text-sm rounded-md transition-all",
-                  field === "unlockDate"
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "hover:bg-muted/50 text-foreground"
-                )}
-              >
+              <button onClick={() => handleFieldSelect("unlockDate")} className={cn("w-full flex items-center justify-between px-2 py-1.5 text-sm rounded-md transition-all", field === "unlockDate" ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted/50 text-foreground")}>
                 <span>Unlock Date</span>
                 {field === "unlockDate" && <Check className="w-4 h-4" />}
               </button>
-              <button
-                onClick={() => handleFieldSelect("createdAt")}
-                className={cn(
-                  "w-full flex items-center justify-between px-2 py-1.5 text-sm rounded-md transition-all",
-                  field === "createdAt"
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "hover:bg-muted/50 text-foreground"
-                )}
-              >
+              <button onClick={() => handleFieldSelect("createdAt")} className={cn("w-full flex items-center justify-between px-2 py-1.5 text-sm rounded-md transition-all", field === "createdAt" ? "bg-primary/10 text-primary font-medium" : "hover:bg-muted/50 text-foreground")}>
                 <span>Created Date</span>
                 {field === "createdAt" && <Check className="w-4 h-4" />}
               </button>
@@ -185,13 +145,11 @@ const MyCapsules = ({
   const [localCapsules, setLocalCapsules] = useState<Capsule[]>(initialCapsules);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Sorting states
   const [upcomingSortField, setUpcomingSortField] = useState<SortField>("unlockDate");
   const [upcomingSortOrder, setUpcomingSortOrder] = useState<SortOrder>("asc");
   const [unlockedSortField, setUnlockedSortField] = useState<SortField>("unlockDate");
   const [unlockedSortOrder, setUnlockedSortOrder] = useState<SortOrder>("asc");
   
-  // Edit form states
   const [editTitle, setEditTitle] = useState("");
   const [editMessage, setEditMessage] = useState("");
   const [editUnlockDate, setEditUnlockDate] = useState<Date | undefined>();
@@ -199,7 +157,6 @@ const MyCapsules = ({
   const [editLoading, setEditLoading] = useState(false);
   const [dateError, setDateError] = useState<string>("");
   
-  // Fetch fresh data from database
   const fetchCapsules = async () => {
     try {
       setIsLoading(true);
@@ -215,27 +172,12 @@ const MyCapsules = ({
     }
   };
 
-  // Fetch data when component mounts
+  useEffect(() => { fetchCapsules(); }, []);
+  useEffect(() => { if (initialCapsules.length > 0) setLocalCapsules(initialCapsules); }, [initialCapsules]);
   useEffect(() => {
-    fetchCapsules();
-  }, []);
-
-  // Update local capsules when initialCapsules prop changes
-  useEffect(() => {
-    if (initialCapsules.length > 0) {
-      setLocalCapsules(initialCapsules);
-    }
-  }, [initialCapsules]);
-
-  // Timer for countdown updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTime(Date.now());
-    }, 1000);
+    const interval = setInterval(() => setTime(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
-
-  // Open capsule when openCapsuleId is set
   useEffect(() => {
     if (openCapsuleId && localCapsules.length > 0) {
       const capsuleToOpen = localCapsules.find(c => c._id === openCapsuleId);
@@ -247,19 +189,12 @@ const MyCapsules = ({
     }
   }, [openCapsuleId, localCapsules, onCapsuleOpened]);
 
-  const upcomingCapsulesRaw = localCapsules.filter(
-    (c) => new Date(c.unlockDate).getTime() > time || !c.viewed
-  );
+  const upcomingCapsulesRaw = localCapsules.filter(c => new Date(c.unlockDate).getTime() > time || !c.viewed);
+  const unlockedCapsulesRaw = localCapsules.filter(c => new Date(c.unlockDate).getTime() <= time && c.viewed);
 
-  const unlockedCapsulesRaw = localCapsules.filter(
-    (c) => new Date(c.unlockDate).getTime() <= time && c.viewed
-  );
-
-  // Sort function
   const sortCapsules = (capsules: Capsule[], field: SortField, order: SortOrder): Capsule[] => {
     return [...capsules].sort((a, b) => {
       let aValue: number, bValue: number;
-      
       if (field === "unlockDate") {
         aValue = new Date(a.unlockDate).getTime();
         bValue = new Date(b.unlockDate).getTime();
@@ -267,37 +202,25 @@ const MyCapsules = ({
         aValue = new Date(a.createdAt).getTime();
         bValue = new Date(b.createdAt).getTime();
       }
-      
-      if (order === "asc") {
-        return aValue - bValue;
-      } else {
-        return bValue - aValue;
-      }
+      return order === "asc" ? aValue - bValue : bValue - aValue;
     });
   };
 
-  // Apply sorting to capsules
   const upcomingCapsules = sortCapsules(upcomingCapsulesRaw, upcomingSortField, upcomingSortOrder);
   const unlockedCapsules = sortCapsules(unlockedCapsulesRaw, unlockedSortField, unlockedSortOrder);
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const confirmDelete = window.confirm("Are you sure you want to delete this capsule?");
-    if (!confirmDelete) return;
-
+    if (!window.confirm("Are you sure you want to delete this capsule?")) return;
     try {
       await axios.delete(`http://localhost:5000/api/capsules/${id}`);
       window.dispatchEvent(new CustomEvent('capsuleDeleted'));
       await fetchCapsules();
-      
       if (selectedCapsule?._id === id) {
         setShowModal(false);
         setSelectedCapsule(null);
       }
-      
-      if (onCapsuleDeleted) {
-        onCapsuleDeleted();
-      }
+      if (onCapsuleDeleted) onCapsuleDeleted();
     } catch (err) {
       console.error(err);
       alert("Error deleting capsule");
@@ -318,10 +241,7 @@ const MyCapsules = ({
 
   const handleUpdate = async () => {
     if (!editingCapsule) return;
-    if (!editTitle.trim()) {
-      alert("Title is required");
-      return;
-    }
+    if (!editTitle.trim()) { alert("Title is required"); return; }
 
     let finalDate = editUnlockDate ? new Date(editUnlockDate) : new Date();
     if (editUnlockTime) {
@@ -342,24 +262,14 @@ const MyCapsules = ({
       try {
         const formData = new FormData();
         formData.append("title", editTitle);
-        formData.append("message", editMessage);
         formData.append("unlockDate", finalDate.toISOString());
-
-        await axios.put(`http://localhost:5000/api/capsules/${editingCapsule._id}`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-
+        await axios.put(`http://localhost:5000/api/capsules/${editingCapsule._id}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
         alert("Capsule updated successfully!");
         window.dispatchEvent(new CustomEvent('capsuleUpdated'));
         await fetchCapsules();
         setShowEditModal(false);
         setEditingCapsule(null);
-      } catch (err: any) {
-        console.error(err);
-        alert(err.response?.data?.error || "Error updating capsule");
-      } finally {
-        setEditLoading(false);
-      }
+      } catch (err: any) { console.error(err); alert(err.response?.data?.error || "Error updating capsule"); } finally { setEditLoading(false); }
       return;
     }
     
@@ -367,7 +277,6 @@ const MyCapsules = ({
       setDateError(`Unlock date must be at least 1 minute in the future. Current time: ${format(now, "h:mm a")}`);
       return;
     }
-    
     if (finalDate.getTime() <= currentUnlockDate.getTime()) {
       setDateError(`❌ New unlock date must be AFTER ${format(currentUnlockDate, "MMM d, yyyy 'at' h:mm a")}. You can only move the date forward.`);
       return;
@@ -375,28 +284,17 @@ const MyCapsules = ({
 
     setEditLoading(true);
     setDateError("");
-    
     try {
       const formData = new FormData();
       formData.append("title", editTitle);
-      formData.append("message", editMessage);
       formData.append("unlockDate", finalDate.toISOString());
-
-      await axios.put(`http://localhost:5000/api/capsules/${editingCapsule._id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
+      await axios.put(`http://localhost:5000/api/capsules/${editingCapsule._id}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
       alert("Capsule updated successfully!");
       window.dispatchEvent(new CustomEvent('capsuleUpdated'));
       await fetchCapsules();
       setShowEditModal(false);
       setEditingCapsule(null);
-    } catch (err: any) {
-      console.error(err);
-      alert(err.response?.data?.error || "Error updating capsule");
-    } finally {
-      setEditLoading(false);
-    }
+    } catch (err: any) { console.error(err); alert(err.response?.data?.error || "Error updating capsule"); } finally { setEditLoading(false); }
   };
 
   const isDateDisabled = (date: Date) => {
@@ -408,7 +306,6 @@ const MyCapsules = ({
     dateToCheck.setHours(0, 0, 0, 0);
     const currentDateStart = new Date(currentUnlockDate);
     currentDateStart.setHours(0, 0, 0, 0);
-    
     if (dateToCheck.getTime() === currentDateStart.getTime()) return false;
     if (dateToCheck.getTime() < today.getTime()) return true;
     if (dateToCheck.getTime() < currentDateStart.getTime()) return true;
@@ -425,7 +322,6 @@ const MyCapsules = ({
     const currentDateTime = new Date(currentUnlockDate);
     const now = new Date();
     const minAllowed = new Date(now.getTime() + 60000);
-    
     if (newDateTime.getTime() === currentDateTime.getTime()) return true;
     if (newDateTime.toDateString() === currentDateTime.toDateString()) {
       if (newDateTime.getTime() <= currentDateTime.getTime()) return false;
@@ -440,11 +336,8 @@ const MyCapsules = ({
     if (editUnlockDate && editingCapsule) {
       const currentUnlockDate = new Date(editingCapsule.unlockDate);
       const isValid = isTimeValid(editUnlockDate, newTime, currentUnlockDate);
-      if (!isValid) {
-        setDateError("Selected time must be after the current unlock time and at least 1 minute in the future");
-      } else {
-        setDateError("");
-      }
+      if (!isValid) setDateError("Selected time must be after the current unlock time and at least 1 minute in the future");
+      else setDateError("");
     }
   };
 
@@ -461,26 +354,15 @@ const MyCapsules = ({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Capsules List */}
       <Card className="lg:col-span-2 bg-card/50 border-border/30 backdrop-blur-sm">
         <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
-          <CardTitle className="text-xl font-serif flex items-center gap-2">
-            <Diamond className="w-5 h-5 text-primary" />
-            Upcoming Capsules
-          </CardTitle>
-          <SortDropdown
-            field={upcomingSortField}
-            order={upcomingSortOrder}
-            onFieldChange={setUpcomingSortField}
-            onOrderChange={setUpcomingSortOrder}
-          />
+          <CardTitle className="text-xl font-serif flex items-center gap-2"><Diamond className="w-5 h-5 text-primary" />Upcoming Capsules</CardTitle>
+          <SortDropdown field={upcomingSortField} order={upcomingSortOrder} onFieldChange={setUpcomingSortField} onOrderChange={setUpcomingSortOrder} />
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {upcomingCapsules.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                No upcoming capsules. Create one to get started!
-              </p>
+              <p className="text-center text-muted-foreground py-8">No upcoming capsules. Create one to get started!</p>
             ) : (
               upcomingCapsules.map((c) => {
                 const createdYear = new Date(c.createdAt).getFullYear();
@@ -488,49 +370,37 @@ const MyCapsules = ({
                 const unlockYear = unlockDate.getFullYear();
                 const status = unlockDate.getTime() > time ? "locked" : "opened";
                 const countdown = getCountdown(unlockDate.getTime() - time);
-                
-                // Calculate time-based progress
                 const progress = getTimeProgress(c.createdAt, c.unlockDate);
 
                 return (
-                  <div
-                    key={c._id}
-                    onClick={async () => {
-                      setSelectedCapsule(c);
-                      setShowModal(true);
-                      const isUnlocked = new Date(c.unlockDate).getTime() <= Date.now();
-                      if (isUnlocked && !c.viewed) {
-                        await axios.put(`http://localhost:5000/api/capsules/view/${c._id}`);
-                        window.dispatchEvent(new CustomEvent('capsuleViewed'));
-                        await fetchCapsules();
-                      }
-                    }}
-                    className={`p-4 rounded-lg border transition-all hover:border-primary/50 cursor-pointer ${getStatusStyles(status)}`}
-                  >
+                  <div key={c._id} onClick={async () => {
+                    setSelectedCapsule(c);
+                    setShowModal(true);
+                    const isUnlocked = new Date(c.unlockDate).getTime() <= Date.now();
+                    if (isUnlocked && !c.viewed) {
+                      await axios.put(`http://localhost:5000/api/capsules/view/${c._id}`);
+                      window.dispatchEvent(new CustomEvent('capsuleViewed'));
+                      await fetchCapsules();
+                    }
+                  }} className={`p-4 rounded-lg border transition-all hover:border-primary/50 cursor-pointer ${getStatusStyles(status)}`}>
                     <div className="mb-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           {getStatusIcon(status)}
                           <span className="font-medium text-foreground">{c.title}</span>
                         </div>
-
                         <div className="flex items-center gap-2">
                           {status === "locked" && (
-                            <button onClick={(e) => handleEdit(c, e)} className="text-blue-400 hover:text-blue-300 transition-colors p-1" title="Edit capsule">
-                              <Edit2 className="w-4 h-4" />
-                            </button>
+                            <button onClick={(e) => handleEdit(c, e)} className="text-blue-400 hover:text-blue-300 transition-colors p-1" title="Edit capsule"><Edit2 className="w-4 h-4" /></button>
                           )}
-                          <button onClick={(e) => handleDelete(c._id, e)} className="text-red-400 hover:text-red-300 transition-colors p-1" title="Delete capsule">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                            status === "opened" ? "bg-green-500/20 text-green-400 shadow-sm" : "bg-yellow-500/20 text-yellow-400"
-                          }`}>
+                          <button onClick={(e) => handleDelete(c._id, e)} className="text-red-400 hover:text-red-300 transition-colors p-1" title="Delete capsule"><Trash2 className="w-4 h-4" /></button>
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${status === "opened" ? "bg-green-500/20 text-green-400 shadow-sm" : "bg-yellow-500/20 text-yellow-400"}`}>
                             {status === "opened" ? "🎉 Unlocked" : "🔒 Locked"}
                           </span>
                         </div>
                       </div>
 
+                      {/* Message visible when unlocked, otherwise show unlock date */}
                       <p className="text-sm mt-1 text-muted-foreground">
                         {unlockDate.getTime() > time
                           ? `🔓 Unlocks on ${format(unlockDate, "MMM d, yyyy 'at' h:mm a")}`
@@ -541,67 +411,40 @@ const MyCapsules = ({
                         <span className="text-primary">→</span>
                         <span className="text-primary font-medium">{unlockYear}</span>
                       </div>
-
-                      {status === "locked" && (
-                        <p className="text-xs text-primary mt-1">{countdown}</p>
-                      )}
+                      {status === "locked" && <p className="text-xs text-primary mt-1">{countdown}</p>}
                     </div>
-                    
-                    {/* Time-based Progress Bar - Fills as time passes */}
                     <Progress value={progress} className="h-1.5" />
                   </div>
                 );
               })
             )}
           </div>
-
           {upcomingCapsules.length > 0 && (
             <div className="mt-6 flex items-center justify-between text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Diamond className="w-4 h-4 text-primary" />
-                <span>{upcomingCapsules.length} capsule{upcomingCapsules.length !== 1 ? 's' : ''} remaining</span>
-              </div>
+              <div className="flex items-center gap-2"><Diamond className="w-4 h-4 text-primary" /><span>{upcomingCapsules.length} capsule{upcomingCapsules.length !== 1 ? 's' : ''} remaining</span></div>
               <span>{new Date().getFullYear()}</span>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Unlocked Capsules */}
       <Card className="bg-card/50 border-border/30 backdrop-blur-sm">
         <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
-          <CardTitle className="text-lg font-serif flex items-center gap-2">
-            <Unlock className="w-5 h-5 text-accent" />
-            Unlocked Capsules
-          </CardTitle>
-          <SortDropdown
-            field={unlockedSortField}
-            order={unlockedSortOrder}
-            onFieldChange={setUnlockedSortField}
-            onOrderChange={setUnlockedSortOrder}
-          />
+          <CardTitle className="text-lg font-serif flex items-center gap-2"><Unlock className="w-5 h-5 text-accent" />Unlocked Capsules</CardTitle>
+          <SortDropdown field={unlockedSortField} order={unlockedSortOrder} onFieldChange={setUnlockedSortField} onOrderChange={setUnlockedSortOrder} />
         </CardHeader>
         <CardContent className="space-y-4">
           {unlockedCapsules.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No unlocked capsules yet</p>
           ) : (
             unlockedCapsules.map((c) => (
-              <div
-                key={c._id}
-                onClick={() => {
-                  setSelectedCapsule(c);
-                  setShowModal(true);
-                }}
-                className="p-4 rounded-lg bg-muted/30 border border-border/30 cursor-pointer hover:border-primary/50 group transition-all"
-              >
+              <div key={c._id} onClick={() => { setSelectedCapsule(c); setShowModal(true); }} className="p-4 rounded-lg bg-muted/30 border border-border/30 cursor-pointer hover:border-primary/50 group transition-all">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-foreground">{c.title}</p>
                     <p className="text-xs text-muted-foreground mt-1">Created: {format(new Date(c.createdAt), "MMM d, yyyy")}</p>
                   </div>
-                  <button onClick={(e) => handleDelete(c._id, e)} className="text-red-400 hover:text-red-300 transition-colors p-1 opacity-0 group-hover:opacity-100" title="Delete capsule">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <button onClick={(e) => handleDelete(c._id, e)} className="text-red-400 hover:text-red-300 transition-colors p-1 opacity-0 group-hover:opacity-100" title="Delete capsule"><Trash2 className="w-4 h-4" /></button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Unlocked on {format(new Date(c.unlockDate), "MMM d, yyyy")}</p>
               </div>
@@ -610,7 +453,7 @@ const MyCapsules = ({
         </CardContent>
       </Card>
       
-      {/* View Modal */}
+      {/* View Modal - Message visible when unlocked */}
       {selectedCapsule && showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
           <div className="bg-card p-6 rounded-xl max-w-md w-full relative transform transition-all duration-300 scale-100 opacity-100 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -630,6 +473,7 @@ const MyCapsules = ({
                 </div>
               ) : (
                 <>
+                  {/* Message is visible when unlocked */}
                   <div className="whitespace-pre-wrap"><p className="font-medium mb-2">Message:</p><p className="text-muted-foreground">{selectedCapsule.message}</p></div>
                   {selectedCapsule.image && (<div><p className="font-medium mb-2">Image:</p><img src={`http://localhost:5000/${selectedCapsule.image}`} alt="capsule" className="rounded-lg max-h-60 w-full object-cover" /></div>)}
                   {selectedCapsule.video && (<div><p className="font-medium mb-2">Video:</p><video controls className="rounded-lg max-h-60 w-full"><source src={`http://localhost:5000/${selectedCapsule.video}`} type="video/mp4" /></video></div>)}
@@ -641,20 +485,20 @@ const MyCapsules = ({
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal - Message field completely removed */}
       {showEditModal && editingCapsule && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowEditModal(false)}>
           <div className="bg-card p-6 rounded-xl max-w-md w-full relative max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <button className="absolute top-2 right-3 text-lg hover:text-red-400 transition-colors" onClick={() => { setShowEditModal(false); setEditingCapsule(null); }}>✖</button>
             <h2 className="text-xl font-semibold mb-4">Edit Time Capsule</h2>
+            
+            {/* Only Title field - Message is NOT shown */}
             <div className="space-y-2 mb-4">
               <Label htmlFor="edit-title" className="text-sm text-muted-foreground">Capsule Title</Label>
               <Input id="edit-title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Name your time capsule..." className="bg-muted/30 border-border/50 focus:border-primary" />
             </div>
-            <div className="space-y-2 mb-4">
-              <Label htmlFor="edit-message" className="text-sm text-muted-foreground">Your Message</Label>
-              <Textarea id="edit-message" value={editMessage} onChange={(e) => setEditMessage(e.target.value)} placeholder="Write a message to your future self..." className="bg-muted/30 border-border/50 focus:border-primary min-h-[100px]" />
-            </div>
+
+            {/* Unlock Date & Time */}
             <div className="space-y-2 mb-4">
               <Label className="text-sm text-muted-foreground flex items-center gap-2"><CalendarIcon className="w-4 h-4" />Set Release Date & Time</Label>
               <div className="grid grid-cols-2 gap-3">
