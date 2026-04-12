@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Upload, Image, Video, Mic, MessageSquare, Calendar, Lock, Sparkles, Clock, LucideIcon } from "lucide-react";
+import { Upload, Image, Video, Mic, MessageSquare, Calendar, Lock, Sparkles, Clock, LucideIcon, Globe } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import axios from "axios";
+import { toast } from "@/hooks/use-toast";
 
 interface ContentType {
   id: string;
@@ -35,10 +36,12 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
   const [message, setMessage] = useState("");
   const [unlockDate, setUnlockDate] = useState<Date | undefined>();
   const [unlockTime, setUnlockTime] = useState("12:00");
+  const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [image, setImage] = useState<File | null>(null);
   const [video, setVideo] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!unlockDate) return;
@@ -54,7 +57,6 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
     }
   }, [unlockDate]);
 
-  // Clear preview when file changes
   useEffect(() => {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
@@ -76,7 +78,6 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
         ? prev.filter((id) => id !== typeId) 
         : [...prev, typeId];
       
-      // Clear file when deselecting type
       if (prev.includes(typeId)) {
         if (typeId === "image") setImage(null);
         if (typeId === "video") setVideo(null);
@@ -91,27 +92,26 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (max 50MB)
     if (file.size > 50 * 1024 * 1024) {
-      alert("File size must be less than 50MB");
+      toast({ title: "File too large", description: "File size must be less than 50MB", variant: "destructive" });
       return;
     }
 
     if (type === "image") {
       if (!file.type.startsWith("image/")) {
-        alert("Please select a valid image file");
+        toast({ title: "Invalid file", description: "Please select a valid image file", variant: "destructive" });
         return;
       }
       setImage(file);
     } else if (type === "video") {
       if (!file.type.startsWith("video/")) {
-        alert("Please select a valid video file");
+        toast({ title: "Invalid file", description: "Please select a valid video file", variant: "destructive" });
         return;
       }
       setVideo(file);
     } else if (type === "audio") {
       if (!file.type.startsWith("audio/")) {
-        alert("Please select a valid audio file");
+        toast({ title: "Invalid file", description: "Please select a valid audio file", variant: "destructive" });
         return;
       }
       setAudio(file);
@@ -119,67 +119,65 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
   };
 
   const handleCreateCapsule = async () => {
+    if (!title.trim()) {
+      toast({ title: "Title Required", description: "Please give your capsule a title", variant: "destructive" });
+      return;
+    }
+
+    const user = JSON.parse(localStorage.getItem("capsule_current_user") || "{}");
+    if (!user?._id) {
+      toast({ title: "Not Logged In", description: "Please login to create a capsule", variant: "destructive" });
+      return;
+    }
+
+    let finalDate = unlockDate ? new Date(unlockDate) : new Date();
+    if (unlockTime) {
+      const [hours, minutes] = unlockTime.split(":");
+      finalDate.setHours(Number(hours));
+      finalDate.setMinutes(Number(minutes));
+      finalDate.setSeconds(0);
+    }
+
+    const minAllowed = new Date(Date.now() + 60000);
+    if (finalDate <= minAllowed) {
+      toast({ 
+        title: "Invalid Unlock Time", 
+        description: "Unlock time must be at least 1 minute in the future", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      if (!title.trim()) {
-        alert("Title is required");
-        return;
-      }
-
-      const user = JSON.parse(localStorage.getItem("capsule_current_user") || "{}");
-      if (!user?._id) {
-        alert("User not logged in");
-        return;
-      }
-
-      // Combine date + time
-      let finalDate = unlockDate ? new Date(unlockDate) : new Date();
-      if (unlockTime) {
-        const [hours, minutes] = unlockTime.split(":");
-        finalDate.setHours(Number(hours));
-        finalDate.setMinutes(Number(minutes));
-        finalDate.setSeconds(0);
-      }
-
-      // Check if unlock time is at least 1 minute in the future
-      const minAllowed = new Date(Date.now() + 60000);
-      if (finalDate <= minAllowed) {
-        alert("Unlock time must be at least 1 minute in the future");
-        return;
-      }
-
       const formData = new FormData();
       formData.append("title", title);
       formData.append("message", message);
       formData.append("unlockDate", finalDate.toISOString());
       formData.append("userId", user._id);
+      formData.append("visibility", visibility);
 
-      // Only append files if they exist
       if (image) formData.append("image", image);
       if (video) formData.append("video", video);
       if (audio) formData.append("audio", audio);
 
-      const res = await axios.post(
-        "http://localhost:5000/api/capsules",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      await axios.post("http://localhost:5000/api/capsules", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
-      console.log(res.data);
-      alert("Capsule Created Successfully!");
+      toast({ 
+        title: "Capsule Created! 🎉", 
+        description: "Your time capsule has been sealed successfully", 
+      });
       
-// Dispatch event to notify dashboard
-window.dispatchEvent(new CustomEvent('capsuleCreated'));
+      window.dispatchEvent(new CustomEvent('capsuleCreated'));
 
-      // Reset form
       setTitle("");
       setMessage("");
       setUnlockDate(undefined);
       setUnlockTime("12:00");
       setSelectedTypes([]);
+      setVisibility("private");
       setImage(null);
       setVideo(null);
       setAudio(null);
@@ -189,8 +187,10 @@ window.dispatchEvent(new CustomEvent('capsuleCreated'));
         onCapsuleCreated();
       }
     } catch (err: any) {
-      console.error(err.response?.data || err.message);
-      alert(err.response?.data?.error || "Error creating capsule");
+      console.error(err);
+      toast({ title: "Creation Failed", description: err.response?.data?.error || "Something went wrong", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -199,17 +199,8 @@ window.dispatchEvent(new CustomEvent('capsuleCreated'));
       if (image) {
         return (
           <div className="space-y-2">
-            <img
-              src={previewUrl}
-              alt="preview"
-              className="mx-auto max-h-40 rounded object-contain"
-            />
-            <button
-              onClick={() => setImage(null)}
-              className="text-xs text-red-400 hover:text-red-300"
-            >
-              Remove image
-            </button>
+            <img src={previewUrl} alt="preview" className="mx-auto max-h-40 rounded object-contain" />
+            <button onClick={() => setImage(null)} className="text-xs text-red-400 hover:text-red-300">Remove image</button>
           </div>
         );
       } else if (video) {
@@ -218,12 +209,7 @@ window.dispatchEvent(new CustomEvent('capsuleCreated'));
             <video controls className="mx-auto max-h-40 rounded">
               <source src={previewUrl} type={video.type} />
             </video>
-            <button
-              onClick={() => setVideo(null)}
-              className="text-xs text-red-400 hover:text-red-300"
-            >
-              Remove video
-            </button>
+            <button onClick={() => setVideo(null)} className="text-xs text-red-400 hover:text-red-300">Remove video</button>
           </div>
         );
       } else if (audio) {
@@ -232,12 +218,7 @@ window.dispatchEvent(new CustomEvent('capsuleCreated'));
             <audio controls className="w-full">
               <source src={previewUrl} type={audio.type} />
             </audio>
-            <button
-              onClick={() => setAudio(null)}
-              className="text-xs text-red-400 hover:text-red-300"
-            >
-              Remove audio
-            </button>
+            <button onClick={() => setAudio(null)} className="text-xs text-red-400 hover:text-red-300">Remove audio</button>
           </div>
         );
       }
@@ -246,19 +227,14 @@ window.dispatchEvent(new CustomEvent('capsuleCreated'));
     return (
       <>
         <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
-        <p className="text-foreground font-medium mb-1">
-          Click to upload
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Max file size: 50MB
-        </p>
+        <p className="text-foreground font-medium mb-1">Click to upload</p>
+        <p className="text-sm text-muted-foreground">Max file size: 50MB</p>
       </>
     );
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Main Create Form */}
       <Card className="lg:col-span-2 bg-card/50 border-border/30 backdrop-blur-sm">
         <CardHeader>
           <CardTitle className="text-xl font-serif flex items-center gap-2">
@@ -267,7 +243,6 @@ window.dispatchEvent(new CustomEvent('capsuleCreated'));
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Title Input */}
           <div className="space-y-2">
             <Label htmlFor="title" className="text-sm text-muted-foreground">Capsule Title</Label>
             <Input
@@ -277,6 +252,39 @@ window.dispatchEvent(new CustomEvent('capsuleCreated'));
               placeholder="Name your time capsule..."
               className="bg-muted/30 border-border/50 focus:border-primary"
             />
+          </div>
+
+          {/* Visibility Selection */}
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">Who can see this capsule?</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setVisibility("private")}
+                className={`p-3 rounded-lg border transition-all text-center ${
+                  visibility === "private"
+                    ? "bg-primary/20 border-primary text-primary"
+                    : "bg-muted/20 border-border/50 hover:border-primary/50 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Lock className="w-5 h-5 mx-auto mb-1" />
+                <p className="text-sm font-medium">Private</p>
+                <p className="text-xs text-muted-foreground">Only you can see</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setVisibility("public")}
+                className={`p-3 rounded-lg border transition-all text-center ${
+                  visibility === "public"
+                    ? "bg-primary/20 border-primary text-primary"
+                    : "bg-muted/20 border-border/50 hover:border-primary/50 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Globe className="w-5 h-5 mx-auto mb-1" />
+                <p className="text-sm font-medium">Public</p>
+                <p className="text-xs text-muted-foreground">Anyone can see</p>
+              </button>
+            </div>
           </div>
 
           {/* Content Types */}
@@ -303,56 +311,30 @@ window.dispatchEvent(new CustomEvent('capsuleCreated'));
             </div>
           </div>
 
-          {/* Upload Area - Dynamic based on selected types */}
+          {/* Upload Areas */}
           {selectedTypes.includes("image") && (
             <div className="border-2 border-dashed border-border/50 rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleFileChange(e, "image")}
-                className="hidden"
-                id="image-upload"
-              />
-              <label htmlFor="image-upload" className="cursor-pointer block">
-                {getUploadAreaContent()}
-              </label>
+              <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, "image")} className="hidden" id="image-upload" />
+              <label htmlFor="image-upload" className="cursor-pointer block">{getUploadAreaContent()}</label>
             </div>
           )}
 
           {selectedTypes.includes("video") && (
             <div className="border-2 border-dashed border-border/50 rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
-              <input
-                type="file"
-                accept="video/*"
-                onChange={(e) => handleFileChange(e, "video")}
-                className="hidden"
-                id="video-upload"
-              />
+              <input type="file" accept="video/*" onChange={(e) => handleFileChange(e, "video")} className="hidden" id="video-upload" />
               <label htmlFor="video-upload" className="cursor-pointer block">
                 {video ? (
                   <div className="space-y-2">
                     <video controls className="mx-auto max-h-40 rounded">
                       <source src={URL.createObjectURL(video)} type={video.type} />
                     </video>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setVideo(null);
-                      }}
-                      className="text-xs text-red-400 hover:text-red-300"
-                    >
-                      Remove video
-                    </button>
+                    <button onClick={(e) => { e.preventDefault(); setVideo(null); }} className="text-xs text-red-400 hover:text-red-300">Remove video</button>
                   </div>
                 ) : (
                   <>
                     <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
-                    <p className="text-foreground font-medium mb-1">
-                      Click to upload video
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      MP4, WebM supported (max 50MB)
-                    </p>
+                    <p className="text-foreground font-medium mb-1">Click to upload video</p>
+                    <p className="text-sm text-muted-foreground">MP4, WebM supported (max 50MB)</p>
                   </>
                 )}
               </label>
@@ -361,45 +343,26 @@ window.dispatchEvent(new CustomEvent('capsuleCreated'));
 
           {selectedTypes.includes("audio") && (
             <div className="border-2 border-dashed border-border/50 rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
-              <input
-                type="file"
-                accept="audio/*"
-                onChange={(e) => handleFileChange(e, "audio")}
-                className="hidden"
-                id="audio-upload"
-              />
+              <input type="file" accept="audio/*" onChange={(e) => handleFileChange(e, "audio")} className="hidden" id="audio-upload" />
               <label htmlFor="audio-upload" className="cursor-pointer block">
                 {audio ? (
                   <div className="space-y-2">
                     <audio controls className="w-full">
                       <source src={URL.createObjectURL(audio)} type={audio.type} />
                     </audio>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setAudio(null);
-                      }}
-                      className="text-xs text-red-400 hover:text-red-300"
-                    >
-                      Remove audio
-                    </button>
+                    <button onClick={(e) => { e.preventDefault(); setAudio(null); }} className="text-xs text-red-400 hover:text-red-300">Remove audio</button>
                   </div>
                 ) : (
                   <>
                     <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
-                    <p className="text-foreground font-medium mb-1">
-                      Click to upload audio
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      MP3, WAV supported (max 50MB)
-                    </p>
+                    <p className="text-foreground font-medium mb-1">Click to upload audio</p>
+                    <p className="text-sm text-muted-foreground">MP3, WAV supported (max 50MB)</p>
                   </>
                 )}
               </label>
             </div>
           )}
 
-          {/* Message */}
           <div className="space-y-2">
             <Label htmlFor="message" className="text-sm text-muted-foreground">Your Message</Label>
             <Textarea
@@ -411,7 +374,6 @@ window.dispatchEvent(new CustomEvent('capsuleCreated'));
             />
           </div>
 
-          {/* Unlock Date & Time */}
           <div className="space-y-2">
             <Label className="text-sm text-muted-foreground flex items-center gap-2">
               <Calendar className="w-4 h-4" />
@@ -420,13 +382,7 @@ window.dispatchEvent(new CustomEvent('capsuleCreated'));
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal bg-muted/30 border-border/50 hover:border-primary",
-                      !unlockDate && "text-muted-foreground"
-                    )}
-                  >
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal bg-muted/30 border-border/50 hover:border-primary", !unlockDate && "text-muted-foreground")}>
                     <Calendar className="mr-2 h-4 w-4" />
                     {unlockDate ? format(unlockDate, "PPP") : <span>Pick a date</span>}
                   </Button>
@@ -448,12 +404,7 @@ window.dispatchEvent(new CustomEvent('capsuleCreated'));
               </Popover>
               <div className="relative">
                 <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="time"
-                  value={unlockTime}
-                  onChange={(e) => setUnlockTime(e.target.value)}
-                  className="pl-10 bg-muted/30 border-border/50 focus:border-primary"
-                />
+                <Input type="time" value={unlockTime} onChange={(e) => setUnlockTime(e.target.value)} className="pl-10 bg-muted/30 border-border/50 focus:border-primary" />
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -461,20 +412,13 @@ window.dispatchEvent(new CustomEvent('capsuleCreated'));
             </p>
           </div>
 
-          {/* Create Button */}
-          <Button
-            variant="hero"
-            size="lg"
-            className="w-full"
-            onClick={handleCreateCapsule}
-          >
+          <Button variant="hero" size="lg" className="w-full" onClick={handleCreateCapsule} disabled={isSubmitting}>
             <Lock className="w-4 h-4 mr-2" />
-            Seal Time Capsule
+            {isSubmitting ? "Creating..." : "Seal Time Capsule"}
           </Button>
         </CardContent>
       </Card>
 
-      {/* Tips & Preview */}
       <Card className="bg-card/50 border-border/30 backdrop-blur-sm">
         <CardHeader>
           <CardTitle className="text-lg font-serif">Tips for Your Capsule</CardTitle>
@@ -485,30 +429,14 @@ window.dispatchEvent(new CustomEvent('capsuleCreated'));
               "Write as if you're speaking to a stranger who happens to be you. What would you want them to know?"
             </p>
           </div>
-
           <ul className="space-y-3 text-sm text-muted-foreground">
-            <li className="flex items-start gap-2">
-              <span className="text-primary">•</span>
-              Include specific details about your current life
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary">•</span>
-              Add photos of everyday moments, not just special occasions
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary">•</span>
-              Record your voice – you'll love hearing it later
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary">•</span>
-              Write about your hopes and predictions
-            </li>
+            <li className="flex items-start gap-2"><span className="text-primary">•</span>Include specific details about your current life</li>
+            <li className="flex items-start gap-2"><span className="text-primary">•</span>Add photos of everyday moments, not just special occasions</li>
+            <li className="flex items-start gap-2"><span className="text-primary">•</span>Record your voice – you'll love hearing it later</li>
+            <li className="flex items-start gap-2"><span className="text-primary">•</span>Write about your hopes and predictions</li>
           </ul>
-
           <div className="pt-4 border-t border-border/30">
-            <p className="text-xs text-muted-foreground">
-              Your capsule will be encrypted and securely stored until the release date.
-            </p>
+            <p className="text-xs text-muted-foreground">Your capsule will be encrypted and securely stored until the release date.</p>
           </div>
         </CardContent>
       </Card>

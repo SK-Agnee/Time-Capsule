@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Clock, Lock, Unlock, User, Mail, Calendar, Users, UserPlus, UserCheck, Globe, Shield } from "lucide-react";
+import { Clock, Lock, Unlock, User, Mail, Calendar, Users, Globe, Shield, Eye, MessageCircle, Heart, Share2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,10 @@ const UserProfile = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [time, setTime] = useState(Date.now());
+  
+  // Modal states
+  const [selectedCapsule, setSelectedCapsule] = useState<Capsule | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("capsule_current_user") || "{}");
@@ -87,29 +91,6 @@ const UserProfile = () => {
     }
   };
 
-  const addFriend = async () => {
-    if (!profile) return;
-    try {
-      await axios.post("http://localhost:5000/api/users/friend-request", {
-        fromUserId: currentUser?._id,
-        toUserId: profile._id
-      });
-      
-      setProfile({ ...profile, isFriend: true });
-      toast({
-        title: "Success",
-        description: `You are now friends with ${profile.name}`,
-      });
-    } catch (err) {
-      console.error("Error adding friend:", err);
-      toast({
-        title: "Error",
-        description: "Failed to add friend",
-        variant: "destructive",
-      });
-    }
-  };
-
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -128,8 +109,6 @@ const UserProfile = () => {
     switch (visibility) {
       case 'public':
         return <Globe className="w-3 h-3" />;
-      case 'friends':
-        return <Users className="w-3 h-3" />;
       default:
         return <Lock className="w-3 h-3" />;
     }
@@ -169,6 +148,8 @@ const UserProfile = () => {
     );
   }
 
+  const publicCapsules = profile.visibleCapsules.filter(c => c.visibility === 'public');
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <DashboardHeader />
@@ -189,12 +170,6 @@ const UserProfile = () => {
                   <div className="flex items-center gap-3 flex-wrap">
                     <h2 className="text-2xl font-serif">{profile.name}</h2>
                     <span className="text-sm text-muted-foreground">@{profile.username}</span>
-                    {profile.isFriend && (
-                      <Badge variant="secondary">
-                        <UserCheck className="w-3 h-3 mr-1" />
-                        Friend
-                      </Badge>
-                    )}
                     {profile.isOwner && (
                       <Badge variant="default" className="bg-primary">
                         <User className="w-3 h-3 mr-1" />
@@ -218,13 +193,6 @@ const UserProfile = () => {
                     </span>
                   </div>
                 </div>
-
-                {!profile.isOwner && !profile.isFriend && (
-                  <Button onClick={addFriend}>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Add Friend
-                  </Button>
-                )}
               </div>
             </CardContent>
           </Card>
@@ -260,35 +228,29 @@ const UserProfile = () => {
             </Card>
           </div>
 
-          {/* Visible Capsules */}
+          {/* Public Capsules Section */}
           <Card className="bg-card/50 border-border/30 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-lg font-serif flex items-center gap-2">
                 <Globe className="w-5 h-5 text-primary" />
-                Visible Capsules
+                Public Capsules
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                {profile.isOwner 
-                  ? "All your capsules are visible to you" 
-                  : profile.isFriend 
-                    ? "Public and friends-only capsules are visible to you" 
-                    : "Only public capsules are visible to you"}
+                Capsules {profile.isOwner ? "you've" : `${profile.name} has`} shared with the community
               </p>
             </CardHeader>
             <CardContent>
-              {profile.visibleCapsules.length === 0 ? (
+              {publicCapsules.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Shield className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>No visible capsules found</p>
-                  <p className="text-sm mt-1">
-                    {!profile.isOwner && !profile.isFriend && "This user hasn't shared any public capsules yet"}
-                    {!profile.isOwner && profile.isFriend && "This user hasn't shared any capsules with friends yet"}
-                    {profile.isOwner && "Create your first capsule to get started!"}
-                  </p>
+                  <Globe className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>No public capsules yet</p>
+                  {profile.isOwner && (
+                    <p className="text-sm mt-1">Create a capsule and set visibility to "Public" to share with the community</p>
+                  )}
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {profile.visibleCapsules.map((capsule) => {
+                <div className="space-y-4">
+                  {publicCapsules.map((capsule) => {
                     const status = getCapsuleStatus(capsule.unlockDate);
                     const isUnlocked = status === "unlocked";
                     const unlockDate = new Date(capsule.unlockDate);
@@ -296,15 +258,17 @@ const UserProfile = () => {
                     return (
                       <div
                         key={capsule._id}
-                        className="p-4 rounded-lg border border-border/30 hover:border-primary/50 transition-all cursor-pointer"
                         onClick={() => {
                           if (isUnlocked) {
-                            window.dispatchEvent(new CustomEvent("openCapsule", { 
-                              detail: { capsuleId: capsule._id } 
-                            }));
-                            navigate("/dashboard");
+                            setSelectedCapsule(capsule);
+                            setShowModal(true);
                           }
                         }}
+                        className={`p-4 rounded-lg border transition-all cursor-pointer ${
+                          isUnlocked 
+                            ? "border-border/30 hover:border-primary/50 hover:shadow-lg" 
+                            : "border-border/30 opacity-70 cursor-not-allowed"
+                        }`}
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
@@ -312,41 +276,37 @@ const UserProfile = () => {
                               <h3 className="font-medium">{capsule.title}</h3>
                               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                 {getVisibilityIcon(capsule.visibility)}
-                                <span className="capitalize">{capsule.visibility || 'private'}</span>
+                                <span className="capitalize">{capsule.visibility}</span>
                               </div>
                               {isUnlocked ? (
                                 <Badge variant="default" className="bg-green-500/20 text-green-500">
-                                  <Unlock className="w-3 h-3 mr-1" />
-                                  Unlocked
+                                  <Unlock className="w-3 h-3 mr-1" />Unlocked
                                 </Badge>
                               ) : (
                                 <Badge variant="secondary">
-                                  <Lock className="w-3 h-3 mr-1" />
-                                  Locked
+                                  <Lock className="w-3 h-3 mr-1" />Locked until {format(unlockDate, "MMM d, yyyy")}
                                 </Badge>
                               )}
                             </div>
                             {isUnlocked && (
-                              <p className="text-sm text-muted-foreground line-clamp-2">
-                                {capsule.message}
-                              </p>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{capsule.message}</p>
                             )}
                             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                               <span>Created: {format(new Date(capsule.createdAt), "MMM d, yyyy")}</span>
-                              <span>
-                                {isUnlocked 
-                                  ? `Unlocked on ${format(unlockDate, "MMM d, yyyy")}`
-                                  : `Unlocks on ${format(unlockDate, "MMM d, yyyy")}`
-                                }
-                              </span>
+                              {isUnlocked && <span>Unlocked on {format(unlockDate, "MMM d, yyyy")}</span>}
                             </div>
                           </div>
+                          {isUnlocked && (
+                            <Button size="sm" variant="ghost" className="text-primary">
+                              <Eye className="w-4 h-4 mr-1" />View
+                            </Button>
+                          )}
                         </div>
                         {!isUnlocked && (
                           <div className="mt-2">
                             <Progress value={0} className="h-1" />
                             <p className="text-xs text-muted-foreground mt-1">
-                              🔒 Locked until {format(unlockDate, "MMM d, yyyy")}
+                              🔒 Locked - becomes available on {format(unlockDate, "MMM d, yyyy")}
                             </p>
                           </div>
                         )}
@@ -360,6 +320,79 @@ const UserProfile = () => {
         </div>
       </main>
       <Footer />
+
+      {/* View Modal - Same as MyCapsules */}
+      {selectedCapsule && showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
+          <div className="bg-card p-6 rounded-xl max-w-md w-full relative transform transition-all duration-300 scale-100 opacity-100 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="absolute top-2 right-3 text-lg hover:text-red-400 transition-colors"
+              onClick={() => { setShowModal(false); setTimeout(() => setSelectedCapsule(null), 200); }}
+            >
+              ✖
+            </button>
+
+            <h2 className="text-xl font-semibold mb-2 pr-6">{selectedCapsule.title}</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              {new Date(selectedCapsule.unlockDate).getTime() > Date.now() 
+                ? `Unlocks on ${new Date(selectedCapsule.unlockDate).toLocaleString()}`
+                : `Unlocked on ${new Date(selectedCapsule.unlockDate).toLocaleString()}`}
+            </p>
+
+            <div className="bg-muted p-4 rounded-md space-y-3">
+              {new Date(selectedCapsule.unlockDate).getTime() > Date.now() ? (
+                <div className="text-center py-4">
+                  <Lock className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-muted-foreground">🔒 This capsule is still locked</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Check back on {new Date(selectedCapsule.unlockDate).toLocaleDateString()}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Message */}
+                  <div className="whitespace-pre-wrap">
+                    <p className="font-medium mb-2">Message:</p>
+                    <p className="text-muted-foreground">{selectedCapsule.message}</p>
+                  </div>
+
+                  {/* Image */}
+                  {selectedCapsule.image && (
+                    <div>
+                      <p className="font-medium mb-2">Image:</p>
+                      <img
+                        src={`http://localhost:5000/${selectedCapsule.image}`}
+                        alt="capsule"
+                        className="rounded-lg max-h-60 w-full object-cover"
+                      />
+                    </div>
+                  )}
+
+                  {/* Video */}
+                  {selectedCapsule.video && (
+                    <div>
+                      <p className="font-medium mb-2">Video:</p>
+                      <video controls className="rounded-lg max-h-60 w-full">
+                        <source src={`http://localhost:5000/${selectedCapsule.video}`} type="video/mp4" />
+                      </video>
+                    </div>
+                  )}
+
+                  {/* Audio */}
+                  {selectedCapsule.audio && (
+                    <div>
+                      <p className="font-medium mb-2">Audio:</p>
+                      <audio controls className="w-full">
+                        <source src={`http://localhost:5000/${selectedCapsule.audio}`} type="audio/mpeg" />
+                      </audio>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

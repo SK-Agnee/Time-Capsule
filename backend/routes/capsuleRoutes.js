@@ -1,11 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const Capsule = require("../models/Capsule");
-
 const fs = require("fs");
 const path = require("path");
-
-// multer config
 const multer = require("multer");
 
 const storage = multer.diskStorage({
@@ -55,10 +52,23 @@ router.post(
   }
 );
 
-// GET capsules
+// GET capsules by user
 router.get("/:userId", async (req, res) => {
   try {
     const capsules = await Capsule.find({ userId: req.params.userId });
+    res.json(capsules);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET public capsules (for discovery)
+router.get("/public/all", async (req, res) => {
+  try {
+    const capsules = await Capsule.find({ 
+      visibility: 'public',
+      unlockDate: { $lte: new Date() }
+    }).sort({ createdAt: -1 });
     res.json(capsules);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -79,7 +89,7 @@ router.put("/view/:id", async (req, res) => {
   }
 });
 
-// UPDATE CAPSULE (IMPORTANT - keep this)
+// UPDATE CAPSULE
 router.put(
   "/:id",
   upload.fields([

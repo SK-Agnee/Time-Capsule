@@ -4,7 +4,7 @@ import {
   Globe, Sparkles, Search, User, Loader2, Eye, Heart, MessageCircle, 
   Share2, Bookmark, Flame, TrendingUp, Clock, Lock, Unlock, 
   Users, MapPin, Calendar, Award, Zap, ChevronRight, Play, 
-  Volume2, VolumeX, X, Send, ThumbsUp, Quote, Plus, Image, Video
+  Volume2, VolumeX, X, Send, ThumbsUp, Quote
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -199,7 +199,6 @@ class FakeAPIService {
   }
   
   async fetchCapsules(page: number): Promise<{ data: PublicCapsule[]; hasMore: boolean }> {
-    // Simulate network delay (300-800ms)
     await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 300));
     
     const start = page * this.pageSize;
@@ -270,51 +269,6 @@ class FakeAPIService {
     return capsule?.likes || 0;
   }
   
-  async createNewCapsule(data: {
-    title: string;
-    message: string;
-    image?: File;
-    video?: File;
-    tags: string[];
-    location?: string;
-  }): Promise<PublicCapsule> {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Simulate image upload
-    let imageUrl = undefined;
-    if (data.image) {
-      imageUrl = `https://picsum.photos/id/${Math.floor(Math.random() * 200) + 1}/800/1000`;
-    }
-    
-    const newCapsule: PublicCapsule = {
-      _id: `capsule_${Date.now()}_${Math.random()}`,
-      title: data.title,
-      message: data.message,
-      unlockDate: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      image: imageUrl,
-      video: undefined,
-      author: this.currentUser || {
-        _id: "current_user",
-        name: "You",
-        username: "you",
-        profilePicture: undefined
-      },
-      likes: 0,
-      views: 0,
-      comments: [],
-      tags: data.tags,
-      location: data.location,
-      mood: "✨ Just Created",
-      timeToRead: `${Math.ceil(data.message.length / 500)} min read`
-    };
-    
-    // Add to beginning of the list (newest first)
-    this.capsules = [newCapsule, ...this.capsules];
-    
-    return newCapsule;
-  }
-  
   async refreshFeed(): Promise<PublicCapsule[]> {
     await new Promise(resolve => setTimeout(resolve, 300));
     return this.capsules;
@@ -336,156 +290,6 @@ class FakeAPIService {
 }
 
 const fakeAPI = new FakeAPIService();
-
-// Create Capsule Dialog Component
-const CreateCapsuleDialog = ({ 
-  isOpen, 
-  onClose, 
-  onCapsuleCreated,
-  currentUser
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  onCapsuleCreated: (capsule: PublicCapsule) => void;
-  currentUser: any;
-}) => {
-  const [title, setTitle] = useState("");
-  const [message, setMessage] = useState("");
-  const [tags, setTags] = useState("");
-  const [location, setLocation] = useState("");
-  const [image, setImage] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  
-  const handleSubmit = async () => {
-    if (!title.trim()) {
-      toast({ title: "Error", description: "Title is required", variant: "destructive" });
-      return;
-    }
-    if (!message.trim()) {
-      toast({ title: "Error", description: "Message is required", variant: "destructive" });
-      return;
-    }
-    
-    setIsSubmitting(true);
-    try {
-      const tagArray = tags.split(",").map(t => t.trim()).filter(t => t);
-      const newCapsule = await fakeAPI.createNewCapsule({
-        title,
-        message,
-        tags: tagArray,
-        location: location || undefined,
-        image: image || undefined
-      });
-      
-      onCapsuleCreated(newCapsule);
-      toast({ title: "Success!", description: "Your capsule has been shared!" });
-      
-      // Reset form
-      setTitle("");
-      setMessage("");
-      setTags("");
-      setLocation("");
-      setImage(null);
-      setImagePreview(null);
-      onClose();
-    } catch (err) {
-      console.error(err);
-      toast({ title: "Error", description: "Failed to create capsule", variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-  
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg bg-background">
-        <div className="p-6">
-          <h2 className="text-2xl font-serif mb-4">Share a Capsule</h2>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">Title *</label>
-              <Input
-                placeholder="Give your capsule a title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-1 block">Message *</label>
-              <Textarea
-                placeholder="Write your message to the world..."
-                rows={4}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-              />
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-1 block">Tags (comma separated)</label>
-              <Input
-                placeholder="inspiration, life, dreams"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-              />
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-1 block">Location</label>
-              <Input
-                placeholder="Where was this created?"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-1 block">Image (optional)</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-                id="image-upload"
-              />
-              <label htmlFor="image-upload" className="cursor-pointer">
-                <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary transition-colors">
-                  {imagePreview ? (
-                    <img src={imagePreview} alt="Preview" className="max-h-32 mx-auto rounded" />
-                  ) : (
-                    <>
-                      <Image className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">Click to upload an image</p>
-                    </>
-                  )}
-                </div>
-              </label>
-            </div>
-            
-            <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full">
-              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-              Share Capsule
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
 
 // Capsule Detail Modal Component
 const CapsuleDetailModal = ({ 
@@ -700,7 +504,6 @@ const Discovery = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCapsule, setSelectedCapsule] = useState<PublicCapsule | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [likedCapsules, setLikedCapsules] = useState<Set<string>>(new Set());
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastCapsuleRef = useRef<HTMLDivElement | null>(null);
@@ -716,39 +519,39 @@ const Discovery = () => {
   }, []);
 
   useEffect(() => {
-  if (isLoading) return;
+    if (isLoading) return;
 
-  if (observerRef.current) observerRef.current.disconnect();
+    if (observerRef.current) observerRef.current.disconnect();
 
-  observerRef.current = new IntersectionObserver(
-    async (entries) => {
-      if (!entries[0].isIntersecting) return;
+    observerRef.current = new IntersectionObserver(
+      async (entries) => {
+        if (!entries[0].isIntersecting) return;
 
-      // 🔥 If near end → generate more data
-      if (capsules.length - page * 6 < 12) {
-        const newCapsules = await fakeAPI.generateMoreData(15);
+        // If near end → generate more data
+        if (capsules.length - page * 6 < 12) {
+          const newCapsules = await fakeAPI.generateMoreData(15);
 
-        setCapsules(prev => {
-          const updated = [...prev, ...newCapsules];
-          return updated.slice(-120);
-        });
+          setCapsules(prev => {
+            const updated = [...prev, ...newCapsules];
+            return updated.slice(-120);
+          });
+        }
+
+        // Always load next batch
+        loadMoreCapsules();
+      },
+      {
+        threshold: 0.3,
+        rootMargin: "300px",
       }
+    );
 
-      // Always load next batch
-      loadMoreCapsules();
-    },
-    {
-      threshold: 0.3,
-      rootMargin: "300px",
+    if (lastCapsuleRef.current) {
+      observerRef.current.observe(lastCapsuleRef.current);
     }
-  );
 
-  if (lastCapsuleRef.current) {
-    observerRef.current.observe(lastCapsuleRef.current);
-  }
-
-  return () => observerRef.current?.disconnect();
-}, [capsules, isLoading, page]);
+    return () => observerRef.current?.disconnect();
+  }, [capsules, isLoading, page]);
 
   const loadMoreCapsules = async () => {
     if (isLoading) return;
@@ -759,8 +562,6 @@ const Discovery = () => {
 
       setCapsules(prev => {
         const updated = [...prev, ...data];
-
-        // 🧠 Keep only last 120 capsules (prevents lag)
         return updated.slice(-120);
       });
 
@@ -770,10 +571,6 @@ const Discovery = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleCapsuleCreated = (newCapsule: PublicCapsule) => {
-    setCapsules(prev => [newCapsule, ...prev]);
   };
 
   const handleLike = async (capsuleId: string, e: React.MouseEvent) => {
@@ -915,16 +712,10 @@ const Discovery = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with Create Button */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-serif">Discover</h2>
-          <p className="text-sm text-muted-foreground">Explore unlocked capsules from the community</p>
-        </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Share Capsule
-        </Button>
+      {/* Header */}
+      <div>
+        <h2 className="text-2xl font-serif">Discover</h2>
+        <p className="text-sm text-muted-foreground">Explore unlocked capsules from the community</p>
       </div>
 
       {/* Search Bar */}
@@ -970,28 +761,15 @@ const Discovery = () => {
         </div>
       )}
 
-      {/* End of Feed */}
-      {/* {!hasMore && capsules.length > 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <Globe className="w-16 h-16 mx-auto mb-4 opacity-30" />
-          <p className="font-medium">You've seen all capsules!</p>
-          <Button variant="outline" className="mt-4" onClick={() => setShowCreateModal(true)}>
-            <Plus className="w-4 h-4 mr-2" /> Share Your Own
-          </Button>
-        </div>
-      )} */}
-
       {/* Empty State */}
       {!isLoading && capsules.length === 0 && (
         <div className="text-center py-12">
           <Globe className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
-          <p className="text-muted-foreground">No capsules yet</p>
-          <Button className="mt-4" onClick={() => setShowCreateModal(true)}>Be the first to share</Button>
+          <p className="text-muted-foreground">No public capsules available yet</p>
         </div>
       )}
 
-      {/* Modals */}
-      <CreateCapsuleDialog isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onCapsuleCreated={handleCapsuleCreated} currentUser={currentUser} />
+      {/* Capsule Detail Modal */}
       <CapsuleDetailModal capsule={selectedCapsule} isOpen={showDetailModal} onClose={() => { setShowDetailModal(false); setSelectedCapsule(null); }} currentUser={currentUser} />
     </div>
   );

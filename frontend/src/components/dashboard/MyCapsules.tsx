@@ -11,6 +11,8 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
+import { toast } from "@/hooks/use-toast";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type Capsule = {
   _id: string;
@@ -157,6 +159,10 @@ const MyCapsules = ({
   const [editLoading, setEditLoading] = useState(false);
   const [dateError, setDateError] = useState<string>("");
   
+  // Delete confirmation dialog states
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [capsuleToDelete, setCapsuleToDelete] = useState<string | null>(null);
+  
   const fetchCapsules = async () => {
     try {
       setIsLoading(true);
@@ -167,6 +173,7 @@ const MyCapsules = ({
       }
     } catch (err) {
       console.error("Error fetching capsules:", err);
+      toast({ title: "Error", description: "Failed to fetch capsules", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -209,21 +216,31 @@ const MyCapsules = ({
   const upcomingCapsules = sortCapsules(upcomingCapsulesRaw, upcomingSortField, upcomingSortOrder);
   const unlockedCapsules = sortCapsules(unlockedCapsulesRaw, unlockedSortField, unlockedSortOrder);
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDeleteClick = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this capsule?")) return;
+    setCapsuleToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!capsuleToDelete) return;
+    
     try {
-      await axios.delete(`http://localhost:5000/api/capsules/${id}`);
+      await axios.delete(`http://localhost:5000/api/capsules/${capsuleToDelete}`);
       window.dispatchEvent(new CustomEvent('capsuleDeleted'));
       await fetchCapsules();
-      if (selectedCapsule?._id === id) {
+      if (selectedCapsule?._id === capsuleToDelete) {
         setShowModal(false);
         setSelectedCapsule(null);
       }
       if (onCapsuleDeleted) onCapsuleDeleted();
+      toast({ title: "Capsule Deleted", description: "Your capsule has been removed successfully" });
     } catch (err) {
       console.error(err);
-      alert("Error deleting capsule");
+      toast({ title: "Delete Failed", description: "Something went wrong", variant: "destructive" });
+    } finally {
+      setDeleteDialogOpen(false);
+      setCapsuleToDelete(null);
     }
   };
 
@@ -241,7 +258,10 @@ const MyCapsules = ({
 
   const handleUpdate = async () => {
     if (!editingCapsule) return;
-    if (!editTitle.trim()) { alert("Title is required"); return; }
+    if (!editTitle.trim()) { 
+      toast({ title: "Error", description: "Title is required", variant: "destructive" });
+      return; 
+    }
 
     let finalDate = editUnlockDate ? new Date(editUnlockDate) : new Date();
     if (editUnlockTime) {
@@ -264,21 +284,26 @@ const MyCapsules = ({
         formData.append("title", editTitle);
         formData.append("unlockDate", finalDate.toISOString());
         await axios.put(`http://localhost:5000/api/capsules/${editingCapsule._id}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
-        alert("Capsule updated successfully!");
+        toast({ title: "Capsule Updated", description: "Your capsule has been updated successfully" });
         window.dispatchEvent(new CustomEvent('capsuleUpdated'));
         await fetchCapsules();
         setShowEditModal(false);
         setEditingCapsule(null);
-      } catch (err: any) { console.error(err); alert(err.response?.data?.error || "Error updating capsule"); } finally { setEditLoading(false); }
+      } catch (err: any) { 
+        console.error(err); 
+        toast({ title: "Error", description: err.response?.data?.error || "Error updating capsule", variant: "destructive" });
+      } finally { setEditLoading(false); }
       return;
     }
     
     if (finalDate.getTime() <= minAllowed.getTime()) {
-      setDateError(`Unlock date must be at least 1 minute in the future. Current time: ${format(now, "h:mm a")}`);
+      setDateError(`Unlock date must be at least 1 minute in the future`);
+      toast({ title: "Error", description: "Unlock date must be at least 1 minute in the future", variant: "destructive" });
       return;
     }
     if (finalDate.getTime() <= currentUnlockDate.getTime()) {
-      setDateError(`❌ New unlock date must be AFTER ${format(currentUnlockDate, "MMM d, yyyy 'at' h:mm a")}. You can only move the date forward.`);
+      setDateError(`New unlock date must be AFTER the current unlock date`);
+      toast({ title: "Error", description: "New unlock date must be after the current unlock date. You can only move the date forward.", variant: "destructive" });
       return;
     }
 
@@ -289,12 +314,15 @@ const MyCapsules = ({
       formData.append("title", editTitle);
       formData.append("unlockDate", finalDate.toISOString());
       await axios.put(`http://localhost:5000/api/capsules/${editingCapsule._id}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
-      alert("Capsule updated successfully!");
+      toast({ title: "Capsule Updated", description: "Your capsule has been updated successfully" });
       window.dispatchEvent(new CustomEvent('capsuleUpdated'));
       await fetchCapsules();
       setShowEditModal(false);
       setEditingCapsule(null);
-    } catch (err: any) { console.error(err); alert(err.response?.data?.error || "Error updating capsule"); } finally { setEditLoading(false); }
+    } catch (err: any) { 
+      console.error(err); 
+      toast({ title: "Error", description: err.response?.data?.error || "Error updating capsule", variant: "destructive" });
+    } finally { setEditLoading(false); }
   };
 
   const isDateDisabled = (date: Date) => {
@@ -336,8 +364,12 @@ const MyCapsules = ({
     if (editUnlockDate && editingCapsule) {
       const currentUnlockDate = new Date(editingCapsule.unlockDate);
       const isValid = isTimeValid(editUnlockDate, newTime, currentUnlockDate);
-      if (!isValid) setDateError("Selected time must be after the current unlock time and at least 1 minute in the future");
-      else setDateError("");
+      if (!isValid) {
+        setDateError("Selected time must be after the current unlock time and at least 1 minute in the future");
+        toast({ title: "Error", description: "Selected time must be after the current unlock time and at least 1 minute in the future", variant: "destructive" });
+      } else {
+        setDateError("");
+      }
     }
   };
 
@@ -393,14 +425,13 @@ const MyCapsules = ({
                           {status === "locked" && (
                             <button onClick={(e) => handleEdit(c, e)} className="text-blue-400 hover:text-blue-300 transition-colors p-1" title="Edit capsule"><Edit2 className="w-4 h-4" /></button>
                           )}
-                          <button onClick={(e) => handleDelete(c._id, e)} className="text-red-400 hover:text-red-300 transition-colors p-1" title="Delete capsule"><Trash2 className="w-4 h-4" /></button>
+                          <button onClick={(e) => handleDeleteClick(c._id, e)} className="text-red-400 hover:text-red-300 transition-colors p-1" title="Delete capsule"><Trash2 className="w-4 h-4" /></button>
                           <span className={`text-xs px-2 py-1 rounded-full font-medium ${status === "opened" ? "bg-green-500/20 text-green-400 shadow-sm" : "bg-yellow-500/20 text-yellow-400"}`}>
                             {status === "opened" ? "🎉 Unlocked" : "🔒 Locked"}
                           </span>
                         </div>
                       </div>
 
-                      {/* Message visible when unlocked, otherwise show unlock date */}
                       <p className="text-sm mt-1 text-muted-foreground">
                         {unlockDate.getTime() > time
                           ? `🔓 Unlocks on ${format(unlockDate, "MMM d, yyyy 'at' h:mm a")}`
@@ -444,7 +475,7 @@ const MyCapsules = ({
                     <p className="text-sm font-medium text-foreground">{c.title}</p>
                     <p className="text-xs text-muted-foreground mt-1">Created: {format(new Date(c.createdAt), "MMM d, yyyy")}</p>
                   </div>
-                  <button onClick={(e) => handleDelete(c._id, e)} className="text-red-400 hover:text-red-300 transition-colors p-1 opacity-0 group-hover:opacity-100" title="Delete capsule"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={(e) => handleDeleteClick(c._id, e)} className="text-red-400 hover:text-red-300 transition-colors p-1 opacity-0 group-hover:opacity-100" title="Delete capsule"><Trash2 className="w-4 h-4" /></button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Unlocked on {format(new Date(c.unlockDate), "MMM d, yyyy")}</p>
               </div>
@@ -473,7 +504,6 @@ const MyCapsules = ({
                 </div>
               ) : (
                 <>
-                  {/* Message is visible when unlocked */}
                   <div className="whitespace-pre-wrap"><p className="font-medium mb-2">Message:</p><p className="text-muted-foreground">{selectedCapsule.message}</p></div>
                   {selectedCapsule.image && (<div><p className="font-medium mb-2">Image:</p><img src={`http://localhost:5000/${selectedCapsule.image}`} alt="capsule" className="rounded-lg max-h-60 w-full object-cover" /></div>)}
                   {selectedCapsule.video && (<div><p className="font-medium mb-2">Video:</p><video controls className="rounded-lg max-h-60 w-full"><source src={`http://localhost:5000/${selectedCapsule.video}`} type="video/mp4" /></video></div>)}
@@ -516,6 +546,17 @@ const MyCapsules = ({
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDelete}
+        title="Delete Capsule"
+        description="Are you sure you want to delete this capsule? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 };
