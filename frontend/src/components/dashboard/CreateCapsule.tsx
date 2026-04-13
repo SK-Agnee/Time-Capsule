@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Upload, Image, Video, Mic, MessageSquare, Calendar, Lock, Sparkles, Clock, LucideIcon, Globe } from "lucide-react";
+import { Upload, Image, Video, Mic, MessageSquare, Calendar, Lock, Sparkles, Clock, LucideIcon, Globe, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +36,7 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
   const [message, setMessage] = useState("");
   const [unlockDate, setUnlockDate] = useState<Date | undefined>();
   const [unlockTime, setUnlockTime] = useState("12:00");
-  const [visibility, setVisibility] = useState<"private" | "public">("private");
+  const [visibility, setVisibility] = useState<"private" | "friends" | "public">("private");
   const [image, setImage] = useState<File | null>(null);
   const [video, setVideo] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
@@ -254,10 +254,10 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
             />
           </div>
 
-          {/* Visibility Selection */}
+          {/* Visibility Selection - 3 options */}
           <div className="space-y-2">
             <Label className="text-sm text-muted-foreground">Who can see this capsule?</Label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => setVisibility("private")}
@@ -269,7 +269,20 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
               >
                 <Lock className="w-5 h-5 mx-auto mb-1" />
                 <p className="text-sm font-medium">Private</p>
-                <p className="text-xs text-muted-foreground">Only you can see</p>
+                <p className="text-xs text-muted-foreground">Only you</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setVisibility("friends")}
+                className={`p-3 rounded-lg border transition-all text-center ${
+                  visibility === "friends"
+                    ? "bg-primary/20 border-primary text-primary"
+                    : "bg-muted/20 border-border/50 hover:border-primary/50 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Users className="w-5 h-5 mx-auto mb-1" />
+                <p className="text-sm font-medium">Friends</p>
+                <p className="text-xs text-muted-foreground">Friends only</p>
               </button>
               <button
                 type="button"
@@ -282,7 +295,7 @@ const CreateCapsule = ({ onCapsuleCreated }: Props) => {
               >
                 <Globe className="w-5 h-5 mx-auto mb-1" />
                 <p className="text-sm font-medium">Public</p>
-                <p className="text-xs text-muted-foreground">Anyone can see</p>
+                <p className="text-xs text-muted-foreground">Everyone</p>
               </button>
             </div>
           </div>

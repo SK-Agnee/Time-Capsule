@@ -29,7 +29,7 @@ interface Notification {
   capsuleId: string;
   timestamp: Date;
   read: boolean;
-  type: "capsule_unlocked" | "capsule_sealed" | "milestone" | "shared";
+  type: "capsule_unlocked" | "capsule_sealed" | "milestone" | "shared" | "friend_request";
 }
 
 const DashboardHeader = () => {
@@ -87,7 +87,6 @@ const DashboardHeader = () => {
         const newUnlockedIds = [...storedUnlockedIds, ...newlyUnlocked.map(c => c._id)];
         localStorage.setItem(`unlocked_notified_${user._id}`, JSON.stringify(newUnlockedIds));
         
-        // Show toast for each new notification
         newNotifications.forEach(notification => {
           toast({
             title: notification.title,
@@ -96,7 +95,6 @@ const DashboardHeader = () => {
           });
         });
 
-        // Dispatch custom event for other components
         window.dispatchEvent(new CustomEvent("newNotifications", { 
           detail: { count: newNotifications.length } 
         }));
@@ -105,6 +103,62 @@ const DashboardHeader = () => {
       }
     } catch (err) {
       console.error("Error checking for unlocked capsules:", err);
+    }
+    return false;
+  };
+
+  const checkForFriendRequests = async () => {
+    if (!user?._id) return false;
+
+    try {
+      const response = await axios.get(`http://localhost:5000/api/users/friend-requests/${user._id}`);
+      const pendingRequests = response.data;
+      
+      const storedRequestIds = JSON.parse(localStorage.getItem(`friend_requests_notified_${user._id}`) || "[]");
+      
+      const newRequests = pendingRequests.filter((req: any) => 
+        !storedRequestIds.includes(req._id)
+      );
+      
+      if (newRequests.length > 0) {
+        const storedNotifications = localStorage.getItem(`notifications_${user._id}`);
+        const existingNotifications = storedNotifications ? JSON.parse(storedNotifications) : [];
+        
+        const newNotifications: Notification[] = newRequests.map((req: any) => ({
+          id: `friend_${req._id}_${Date.now()}`,
+          title: "👥 Friend Request!",
+          message: `${req.from.name} (@${req.from.username}) sent you a friend request`,
+          capsuleId: "",
+          timestamp: new Date(),
+          read: false,
+          type: "friend_request"
+        }));
+        
+        const updatedNotifications = [...newNotifications, ...existingNotifications];
+        setNotifications(updatedNotifications);
+        setHasUnread(true);
+        
+        localStorage.setItem(`notifications_${user._id}`, JSON.stringify(updatedNotifications));
+        
+        const newRequestIds = [...storedRequestIds, ...newRequests.map((req: any) => req._id)];
+        localStorage.setItem(`friend_requests_notified_${user._id}`, JSON.stringify(newRequestIds));
+        
+        newNotifications.forEach(notification => {
+          toast({
+            title: notification.title,
+            description: notification.message,
+            duration: 5000,
+          });
+        });
+        
+        window.dispatchEvent(new CustomEvent("newNotifications", { 
+          detail: { count: newNotifications.length } 
+        }));
+        
+        return true;
+      }
+    } catch (err) {
+      console.error("Error checking friend requests:", err);
     }
     return false;
   };
@@ -121,6 +175,7 @@ const DashboardHeader = () => {
       }
 
       await checkForNewlyUnlockedCapsules();
+      await checkForFriendRequests();
       lastCheckRef.current = Date.now();
     } catch (err) {
       console.error("Error fetching notifications:", err);
@@ -130,37 +185,28 @@ const DashboardHeader = () => {
   // Set up real-time checking
   useEffect(() => {
     if (user?._id) {
-      // Initial fetch
       fetchNotifications();
       
-      // Check every 10 seconds instead of 60 for more real-time feel
       intervalRef.current = setInterval(fetchNotifications, 10000);
       
-      // Set up event listener for capsule creation/updates
       const handleCapsuleCreated = () => {
-        console.log("Capsule created event received, checking for updates...");
         setTimeout(() => fetchNotifications(), 500);
       };
       
       const handleCapsuleUnlocked = () => {
-        console.log("Capsule unlocked event received, checking for updates...");
         setTimeout(() => fetchNotifications(), 100);
       };
       
       const handleFocus = () => {
-        console.log("Window focused, checking for updates...");
         fetchNotifications();
       };
       
-      // Listen for custom events from other components
       window.addEventListener("capsuleCreated", handleCapsuleCreated);
       window.addEventListener("capsuleUnlocked", handleCapsuleUnlocked);
       window.addEventListener("focus", handleFocus);
       
-      // Also listen for storage events (for multi-tab support)
       const handleStorageChange = (e: StorageEvent) => {
-        if (e.key === `unlocked_notified_${user._id}` || e.key === `notifications_${user._id}`) {
-          console.log("Storage changed in another tab, refreshing notifications...");
+        if (e.key === `unlocked_notified_${user._id}` || e.key === `notifications_${user._id}` || e.key === `friend_requests_notified_${user._id}`) {
           fetchNotifications();
         }
       };
@@ -185,7 +231,6 @@ const DashboardHeader = () => {
     
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log("Tab became visible, checking for updates...");
         fetchNotifications();
       }
     };
@@ -226,6 +271,8 @@ const DashboardHeader = () => {
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent("openCapsule", { detail: { capsuleId: notification.capsuleId } }));
       }, 100);
+    } else if (notification.type === "friend_request") {
+      navigate("/dashboard?tab=friends-vaults");
     }
   };
 
@@ -268,6 +315,8 @@ const DashboardHeader = () => {
         return Sparkles;
       case "shared":
         return Users;
+      case "friend_request":
+        return Users;
       default:
         return Bell;
     }
@@ -283,6 +332,8 @@ const DashboardHeader = () => {
         return "bg-purple-500/15 text-purple-500";
       case "shared":
         return "bg-orange-500/15 text-orange-500";
+      case "friend_request":
+        return "bg-pink-500/15 text-pink-500";
       default:
         return "bg-primary/15 text-primary";
     }
@@ -297,7 +348,6 @@ const DashboardHeader = () => {
       .slice(0, 2);
   };
 
-  // Manual refresh function
   const handleManualRefresh = () => {
     fetchNotifications();
     toast({
@@ -364,7 +414,7 @@ const DashboardHeader = () => {
                       <Bell className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-30" />
                       <p className="text-sm text-muted-foreground">No notifications yet</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        When capsules unlock, you'll see them here
+                        When capsules unlock or you get friend requests, you'll see them here
                       </p>
                     </div>
                   ) : (

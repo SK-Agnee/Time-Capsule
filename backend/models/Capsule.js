@@ -5,7 +5,7 @@ const CapsuleSchema = new mongoose.Schema({
   message: { type: String, required: true },
   unlockDate: { type: Date, required: true },
   userId: { type: String, required: true },
-  visibility: { type: String, enum: ['private', 'public'], default: 'private' },
+  visibility: { type: String, enum: ['private', 'friends', 'public'], default: 'private' },
   image: { type: String, default: null },
   video: { type: String, default: null },
   audio: { type: String, default: null },

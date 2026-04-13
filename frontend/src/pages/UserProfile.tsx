@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Clock, Lock, Unlock, User, Mail, Calendar, Users, Globe, Shield, Eye, MessageCircle, Heart, Share2 } from "lucide-react";
+import { Clock, Lock, Unlock, User, Mail, Calendar, Users, Globe, Shield, Eye, MessageCircle, Heart, Share2, UserPlus, UserCheck, UserMinus, Bell, Check, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -38,14 +38,15 @@ interface UserProfileData {
   friendsCount: number;
   isFriend: boolean;
   isOwner: boolean;
+  friendRequestStatus?: string | null;
   createdAt: string;
-  visibleCapsules: Capsule[];
 }
 
 const UserProfile = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfileData | null>(null);
+  const [publicCapsules, setPublicCapsules] = useState<Capsule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [time, setTime] = useState(Date.now());
@@ -69,6 +70,7 @@ const UserProfile = () => {
   useEffect(() => {
     if (userId && currentUser) {
       fetchUserProfile();
+      fetchPublicCapsules();
     }
   }, [userId, currentUser]);
 
@@ -86,8 +88,98 @@ const UserProfile = () => {
         variant: "destructive",
       });
       navigate("/dashboard");
+    }
+  };
+
+  const fetchPublicCapsules = async () => {
+    try {
+      // Fetch all capsules from the user
+      const response = await axios.get(`http://localhost:5000/api/capsules/${userId}`);
+      const allCapsules = response.data;
+      
+      // Filter only public capsules (both locked and unlocked)
+      const publicOnly = allCapsules.filter((c: Capsule) => c.visibility === 'public');
+      
+      // Sort by newest first
+      publicOnly.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      setPublicCapsules(publicOnly);
+    } catch (err) {
+      console.error("Error fetching public capsules:", err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSendFriendRequest = async () => {
+    try {
+      await axios.post('http://localhost:5000/api/users/friend-request', {
+        fromUserId: currentUser?._id,
+        toUserId: profile?._id
+      });
+      
+      toast({ title: "Request Sent", description: `Friend request sent to ${profile?.name}` });
+      fetchUserProfile();
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: "Error", description: err.response?.data?.error || "Failed to send request", variant: "destructive" });
+    }
+  };
+
+  const handleAcceptRequest = async () => {
+    try {
+      await axios.post('http://localhost:5000/api/users/friend-request/accept', {
+        userId: currentUser?._id,
+        requestId: profile?._id
+      });
+      
+      toast({ title: "Friend Added", description: `You are now friends with ${profile?.name}` });
+      fetchUserProfile();
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "Failed to accept request", variant: "destructive" });
+    }
+  };
+
+  const handleRejectRequest = async () => {
+    try {
+      await axios.post('http://localhost:5000/api/users/friend-request/reject', {
+        userId: currentUser?._id,
+        requestId: profile?._id
+      });
+      
+      toast({ title: "Request Declined", description: `Friend request from ${profile?.name} declined` });
+      fetchUserProfile();
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "Failed to decline request", variant: "destructive" });
+    }
+  };
+
+  const handleCancelRequest = async () => {
+    try {
+      await axios.post('http://localhost:5000/api/users/friend-request/cancel', {
+        userId: currentUser?._id,
+        requestId: profile?._id
+      });
+      
+      toast({ title: "Request Cancelled", description: `Friend request to ${profile?.name} cancelled` });
+      fetchUserProfile();
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "Failed to cancel request", variant: "destructive" });
+    }
+  };
+
+  const handleRemoveFriend = async () => {
+    try {
+      await axios.delete(`http://localhost:5000/api/users/friend/${currentUser?._id}/${profile?._id}`);
+      
+      toast({ title: "Friend Removed", description: `${profile?.name} removed from friends` });
+      fetchUserProfile();
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "Failed to remove friend", variant: "destructive" });
     }
   };
 
@@ -105,13 +197,22 @@ const UserProfile = () => {
     return isUnlocked ? "unlocked" : "locked";
   };
 
-  const getVisibilityIcon = (visibility?: string) => {
-    switch (visibility) {
-      case 'public':
-        return <Globe className="w-3 h-3" />;
-      default:
-        return <Lock className="w-3 h-3" />;
-    }
+  const getTimeProgress = (createdAt: string, unlockDate: string) => {
+    const created = new Date(createdAt).getTime();
+    const unlock = new Date(unlockDate).getTime();
+    const now = Date.now();
+    if (now >= unlock) return 100;
+    const totalDuration = unlock - created;
+    const elapsed = now - created;
+    const percentage = (elapsed / totalDuration) * 100;
+    return Math.max(0, Math.min(100, percentage));
+  };
+
+  const getCountdown = (diff: number) => {
+    if (diff <= 0) return "Unlocked";
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    return `${days}d ${hours}h left`;
   };
 
   if (isLoading) {
@@ -148,8 +249,6 @@ const UserProfile = () => {
     );
   }
 
-  const publicCapsules = profile.visibleCapsules.filter(c => c.visibility === 'public');
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <DashboardHeader />
@@ -176,6 +275,12 @@ const UserProfile = () => {
                         You
                       </Badge>
                     )}
+                    {profile.isFriend && !profile.isOwner && (
+                      <Badge variant="secondary" className="bg-green-500/10 text-green-500">
+                        <UserCheck className="w-3 h-3 mr-1" />
+                        Friend
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-muted-foreground mt-2">{profile.bio || "No bio yet"}</p>
                   <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground flex-wrap">
@@ -196,6 +301,55 @@ const UserProfile = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Friend Request Button Section */}
+          {!profile.isOwner && (
+            <Card className="bg-card/50 border-border/30 backdrop-blur-sm">
+              <CardContent className="pt-4 pb-4">
+                {profile.isFriend ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="w-5 h-5 text-green-500" />
+                      <span className="text-sm text-muted-foreground">You are friends with {profile.name}</span>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleRemoveFriend} className="text-red-400 hover:text-red-500">
+                      <UserMinus className="w-4 h-4 mr-1" /> Remove Friend
+                    </Button>
+                  </div>
+                ) : profile.friendRequestStatus === 'pending_from_me' ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-yellow-500" />
+                      <span className="text-sm text-muted-foreground">Friend request sent to {profile.name}</span>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleCancelRequest}>
+                      Cancel Request
+                    </Button>
+                  </div>
+                ) : profile.friendRequestStatus === 'pending_from_them' ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-5 h-5 text-primary" />
+                      <span className="text-sm text-muted-foreground">{profile.name} sent you a friend request</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="hero" onClick={handleAcceptRequest}>
+                        <Check className="w-4 h-4 mr-1" /> Accept
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={handleRejectRequest}>
+                        <X className="w-4 h-4 mr-1" /> Decline
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button variant="hero" className="w-full" onClick={handleSendFriendRequest}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Add Friend
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -228,7 +382,7 @@ const UserProfile = () => {
             </Card>
           </div>
 
-          {/* Public Capsules Section */}
+          {/* Public Capsules Section - Shows both locked and unlocked */}
           <Card className="bg-card/50 border-border/30 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-lg font-serif flex items-center gap-2">
@@ -251,9 +405,10 @@ const UserProfile = () => {
               ) : (
                 <div className="space-y-4">
                   {publicCapsules.map((capsule) => {
-                    const status = getCapsuleStatus(capsule.unlockDate);
-                    const isUnlocked = status === "unlocked";
+                    const isUnlocked = getCapsuleStatus(capsule.unlockDate) === "unlocked";
                     const unlockDate = new Date(capsule.unlockDate);
+                    const progress = getTimeProgress(capsule.createdAt, capsule.unlockDate);
+                    const countdown = getCountdown(unlockDate.getTime() - time);
                     
                     return (
                       <div
@@ -267,7 +422,7 @@ const UserProfile = () => {
                         className={`p-4 rounded-lg border transition-all cursor-pointer ${
                           isUnlocked 
                             ? "border-border/30 hover:border-primary/50 hover:shadow-lg" 
-                            : "border-border/30 opacity-70 cursor-not-allowed"
+                            : "border-border/30 hover:border-primary/30"
                         }`}
                       >
                         <div className="flex items-start justify-between mb-2">
@@ -275,8 +430,8 @@ const UserProfile = () => {
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <h3 className="font-medium">{capsule.title}</h3>
                               <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                {getVisibilityIcon(capsule.visibility)}
-                                <span className="capitalize">{capsule.visibility}</span>
+                                <Globe className="w-3 h-3" />
+                                <span>Public</span>
                               </div>
                               {isUnlocked ? (
                                 <Badge variant="default" className="bg-green-500/20 text-green-500">
@@ -284,7 +439,7 @@ const UserProfile = () => {
                                 </Badge>
                               ) : (
                                 <Badge variant="secondary">
-                                  <Lock className="w-3 h-3 mr-1" />Locked until {format(unlockDate, "MMM d, yyyy")}
+                                  <Lock className="w-3 h-3 mr-1" />Locked
                                 </Badge>
                               )}
                             </div>
@@ -293,23 +448,21 @@ const UserProfile = () => {
                             )}
                             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                               <span>Created: {format(new Date(capsule.createdAt), "MMM d, yyyy")}</span>
-                              {isUnlocked && <span>Unlocked on {format(unlockDate, "MMM d, yyyy")}</span>}
+                              <span>
+                                {isUnlocked 
+                                  ? `Unlocked on ${format(unlockDate, "MMM d, yyyy")}`
+                                  : `Unlocks on ${format(unlockDate, "MMM d, yyyy")}`
+                                }
+                              </span>
                             </div>
+                            {!isUnlocked && (
+                              <p className="text-xs text-primary mt-1">{countdown}</p>
+                            )}
                           </div>
-                          {isUnlocked && (
-                            <Button size="sm" variant="ghost" className="text-primary">
-                              <Eye className="w-4 h-4 mr-1" />View
-                            </Button>
-                          )}
                         </div>
-                        {!isUnlocked && (
-                          <div className="mt-2">
-                            <Progress value={0} className="h-1" />
-                            <p className="text-xs text-muted-foreground mt-1">
-                              🔒 Locked - becomes available on {format(unlockDate, "MMM d, yyyy")}
-                            </p>
-                          </div>
-                        )}
+                        <div className="mt-3">
+                          <Progress value={progress} className="h-1.5" />
+                        </div>
                       </div>
                     );
                   })}
@@ -321,7 +474,7 @@ const UserProfile = () => {
       </main>
       <Footer />
 
-      {/* View Modal - Same as MyCapsules */}
+      {/* View Modal */}
       {selectedCapsule && showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
           <div className="bg-card p-6 rounded-xl max-w-md w-full relative transform transition-all duration-300 scale-100 opacity-100 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -350,13 +503,11 @@ const UserProfile = () => {
                 </div>
               ) : (
                 <>
-                  {/* Message */}
                   <div className="whitespace-pre-wrap">
                     <p className="font-medium mb-2">Message:</p>
                     <p className="text-muted-foreground">{selectedCapsule.message}</p>
                   </div>
 
-                  {/* Image */}
                   {selectedCapsule.image && (
                     <div>
                       <p className="font-medium mb-2">Image:</p>
@@ -368,7 +519,6 @@ const UserProfile = () => {
                     </div>
                   )}
 
-                  {/* Video */}
                   {selectedCapsule.video && (
                     <div>
                       <p className="font-medium mb-2">Video:</p>
@@ -378,7 +528,6 @@ const UserProfile = () => {
                     </div>
                   )}
 
-                  {/* Audio */}
                   {selectedCapsule.audio && (
                     <div>
                       <p className="font-medium mb-2">Audio:</p>
