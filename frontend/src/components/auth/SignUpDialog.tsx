@@ -22,81 +22,143 @@ interface SignUpDialogProps {
   onSwitchToSignIn: () => void;
 }
 
+// Regex patterns
+const VALIDATION_PATTERNS = {
+  // Full name: letters, spaces, hyphens, apostrophes, min 2 chars, max 50
+  name: /^[A-Za-z\s\-']{2,50}$/,
+  
+  // Username: alphanumeric, underscore, dot, hyphen. 3-20 chars, must start with letter
+  username: /^[A-Za-z][A-Za-z0-9_.]{2,19}$/,
+  
+  // Email: standard email validation
+  email: /^[^\s@]+@([^\s@.,]+\.)+[^\s@.,]{2,}$/,
+  
+  // Password: min 6 chars, at least one letter and one number
+  password: /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/,
+};
+
 const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProps) => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
-  const [username, setUsername] = useState(""); // Add username field
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
+  // Field-specific error states
+  const [errors, setErrors] = useState({
+    name: "",
+    username: "",
+    email: "",
+    password: "",
+    terms: "",
+  });
+
+  // Real-time validation functions
+  const validateName = (value: string): string => {
+    if (!value.trim()) return "Full name is required";
+    if (!VALIDATION_PATTERNS.name.test(value.trim())) {
+      return "Name must be 2-50 characters and contain only letters, spaces, hyphens, or apostrophes";
+    }
+    return "";
+  };
+
+  const validateUsername = (value: string): string => {
+    if (!value.trim()) return "Username is required";
+    if (!VALIDATION_PATTERNS.username.test(value.trim())) {
+      return "Username must start with a letter, be 3-20 characters, and contain only letters, numbers, underscores, or dots";
+    }
+    return "";
+  };
+
+  const validateEmail = (value: string): string => {
+    if (!value.trim()) return "Email is required";
+    if (!VALIDATION_PATTERNS.email.test(value)) {
+      return "Please enter a valid email address (e.g., name@example.com)";
+    }
+    return "";
+  };
+
+  const validatePassword = (value: string): string => {
+    if (!value) return "Password is required";
+    if (value.length < 6) return "Password must be at least 6 characters";
+    if (!VALIDATION_PATTERNS.password.test(value)) {
+      return "Password must contain at least one letter and one number";
+    }
+    return "";
+  };
+
+  const validateTerms = (checked: boolean): string => {
+    if (!checked) return "You must agree to the terms and conditions";
+    return "";
+  };
+
+  // Real-time validation handlers
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setName(value);
+    setErrors(prev => ({ ...prev, name: validateName(value) }));
+  };
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setUsername(value);
+    setErrors(prev => ({ ...prev, username: validateUsername(value) }));
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    setErrors(prev => ({ ...prev, email: validateEmail(value) }));
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPassword(value);
+    setErrors(prev => ({ ...prev, password: validatePassword(value) }));
+  };
+
+  const handleTermsChange = (checked: boolean) => {
+    setAgreedToTerms(checked);
+    setErrors(prev => ({ ...prev, terms: validateTerms(checked) }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation
-    if (!name.trim()) {
-      toast({
-        title: "Error",
-        description: "Full name is required",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Validate all fields
+    const nameError = validateName(name);
+    const usernameError = validateUsername(username);
+    const emailError = validateEmail(email);
+    const passwordError = validatePassword(password);
+    const termsError = validateTerms(agreedToTerms);
 
-    if (!username.trim()) {
-      toast({
-        title: "Error",
-        description: "Username is required",
-        variant: "destructive",
-      });
-      return;
-    }
+    setErrors({
+      name: nameError,
+      username: usernameError,
+      email: emailError,
+      password: passwordError,
+      terms: termsError,
+    });
 
-    if (!email.trim()) {
+    // Check if any validation failed
+    if (nameError || usernameError || emailError || passwordError || termsError) {
       toast({
-        title: "Error",
-        description: "Email is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!password) {
-      toast({
-        title: "Error",
-        description: "Password is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 6 characters",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!agreedToTerms) {
-      toast({
-        title: "Error",
-        description: "Please agree to the terms",
+        title: "Validation Error",
+        description: "Please fix the errors before submitting",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      // Change from /signup to /register
       const res = await axios.post(
         'http://localhost:5000/api/auth/register',
         {
-          name,
-          username, // Add username
-          email,
+          name: name.trim(),
+          username: username.trim().toLowerCase(), // Convert to lowercase for consistency
+          email: email.trim().toLowerCase(),
           password
         }
       );
@@ -144,7 +206,9 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           {/* Full Name */}
           <div className="space-y-2">
-            <Label htmlFor="signup-name">Full Name</Label>
+            <Label htmlFor="signup-name">
+              Full Name <span className="text-red-500">*</span>
+            </Label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -152,15 +216,25 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
                 type="text"
                 placeholder="John Doe"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="pl-10 bg-muted/30 border-border/50 focus:border-primary"
+                onChange={handleNameChange}
+                className={`pl-10 bg-muted/30 border-border/50 focus:border-primary ${
+                  errors.name ? "border-red-500 focus:border-red-500" : ""
+                }`}
               />
             </div>
+            {errors.name && (
+              <p className="text-xs text-red-500 mt-1">{errors.name}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Use your real name for easy identification
+            </p>
           </div>
 
-          {/* Username - ADD THIS FIELD */}
+          {/* Username */}
           <div className="space-y-2">
-            <Label htmlFor="signup-username">Username</Label>
+            <Label htmlFor="signup-username">
+              Username <span className="text-red-500">*</span>
+            </Label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -168,15 +242,25 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
                 type="text"
                 placeholder="johndoe"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="pl-10 bg-muted/30 border-border/50 focus:border-primary"
+                onChange={handleUsernameChange}
+                className={`pl-10 bg-muted/30 border-border/50 focus:border-primary ${
+                  errors.username ? "border-red-500 focus:border-red-500" : ""
+                }`}
               />
             </div>
+            {errors.username && (
+              <p className="text-xs text-red-500 mt-1">{errors.username}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Letters, numbers, underscores, dots. Must start with a letter (3-20 characters)
+            </p>
           </div>
 
           {/* Email */}
           <div className="space-y-2">
-            <Label htmlFor="signup-email">Email</Label>
+            <Label htmlFor="signup-email">
+              Email <span className="text-red-500">*</span>
+            </Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -184,15 +268,22 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
                 type="email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-10 bg-muted/30 border-border/50 focus:border-primary"
+                onChange={handleEmailChange}
+                className={`pl-10 bg-muted/30 border-border/50 focus:border-primary ${
+                  errors.email ? "border-red-500 focus:border-red-500" : ""
+                }`}
               />
             </div>
+            {errors.email && (
+              <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+            )}
           </div>
 
           {/* Password */}
           <div className="space-y-2">
-            <Label htmlFor="signup-password">Password</Label>
+            <Label htmlFor="signup-password">
+              Password <span className="text-red-500">*</span>
+            </Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -200,8 +291,10 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-10 pr-10 bg-muted/30 border-border/50 focus:border-primary"
+                onChange={handlePasswordChange}
+                className={`pl-10 pr-10 bg-muted/30 border-border/50 focus:border-primary ${
+                  errors.password ? "border-red-500 focus:border-red-500" : ""
+                }`}
               />
               <button
                 type="button"
@@ -211,8 +304,11 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {errors.password && (
+              <p className="text-xs text-red-500 mt-1">{errors.password}</p>
+            )}
             <p className="text-xs text-muted-foreground">
-              Must be at least 6 characters
+              Must be at least 6 characters and contain at least one letter and one number
             </p>
           </div>
 
@@ -221,8 +317,8 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
             <Checkbox
               id="terms"
               checked={agreedToTerms}
-              onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
-              className="mt-0.5"
+              onCheckedChange={handleTermsChange}
+              className={`mt-0.5 ${errors.terms ? "border-red-500" : ""}`}
             />
             <Label htmlFor="terms" className="text-sm text-muted-foreground font-normal leading-tight">
               I agree to the{" "}
@@ -235,6 +331,9 @@ const SignUpDialog = ({ open, onOpenChange, onSwitchToSignIn }: SignUpDialogProp
               </a>
             </Label>
           </div>
+          {errors.terms && (
+            <p className="text-xs text-red-500 mt-1">{errors.terms}</p>
+          )}
 
           {/* Submit */}
           <Button type="submit" variant="hero" className="w-full">
